@@ -53,8 +53,7 @@ ipch/
 [Rr]elease/
 obj/
 
-# Linux Binary
-littlec
+
 
 # Visual Studio 2015 cache/options directory
 .vs/
