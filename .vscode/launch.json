@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [{
+      "type": "node",
+      "request": "launch",
+      "name": "Launch program",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\little_c_in_nodejs\\littlec.js",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "cppdbg",
+      "request": "launch",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "d:/programming/frontend/little_c",
+      "environment": [],
+      "program": "d:/programming/frontend/little_c/build/Debug/outDebug",
+      "internalConsoleOptions": "openOnSessionStart",
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:/MinGW/mingw32/bin/gdb.exe",
+      "console": "integratedTerminal",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }]
+    }
+  ]
+}
