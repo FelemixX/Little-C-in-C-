@@ -142,7 +142,7 @@ char token_type, tok;
 
 int functos;	/* index to top of function call stack */
 int func_index; /* index into function table */
-int gvar_index; /* index into global variable table */
+int gvar_index; /* индекс глобальной переменной в таблице global_vars */
 int lvartos;	/* index into local variable stack */
 
 int ret_value;		 /* function return value */
@@ -164,48 +164,53 @@ char *find_func(char *name), get_token(void);
 
 int main(int argc, char *argv[])
 {
+	char *test_char = "qweqweqwea";
+	test_char;
 	if (argc != 2)
 	{
 		printf("Usage: littlec <filename>\n");
 		exit(1);
 	}
 
-	/* allocate memory for the program */
+	/* выделить память под программу
+	 * PROG_SIZE - размер программы*/
 	if ((p_buf = (char *)malloc(PROG_SIZE)) == NULL)
 	{
-		printf("Allocation Failure");
+		printf("Allocation Failure"); //если программа пустая
 		exit(1);
 	}
 
-	/* load the program to execute */
+	/* загрузить программу для выполнения */
 	if (!load_program(p_buf, argv[1]))
 		exit(1);
 	if (setjmp(e_buf))
-		exit(1); /* initialize long jump buffer */
+		exit(1); /* инициализация буфера longjump */
 
-	gvar_index = 0; /* initialize global variable index */
+	gvar_index = 0; /* инициализация индекса глобальных переменных */
 
-	/* set program pointer to start of program buffer */
+	/* установка указателя на начало буфера программы  */
 	prog = p_buf;
-	prescan(); /* find the location of all functions
-				  and global variables in the program */
+	prescan(); /* определение адресов всех функций 
+				  и глобальных переменных
+				  короче говоря, предварительный проход компилятора */
 
-	lvartos = 0;		 /* initialize local variable stack index */
-	functos = 0;		 /* initialize the CALL stack index */
+	lvartos = 0;		 /* инициализация индекса стека локальных переменных */
+	functos = 0;		 /* инициализация индекса стека вызова CALL */
 	break_occurring = 0; /* initialize the break occurring flag */
 
-	/* setup call to main() */
-	prog = find_func("main"); /* find program starting point */
+	/* вызываем функцию main
+	 * она всегда вызывается первой*/
+	prog = find_func("main"); /* ищем начало программы */
 
 	if (!prog)
-	{ /* incorrect or missing main() function in program */
+	{ /* main написан с ошибкой или отсутствует */
 		printf("main() not found.\n");
 		exit(1);
 	}
 
-	prog--; /* back up to opening ( */
+	prog--; /* возвращаемся к открывающей ( */
 	strcpy_s(token, 80, "main");
-	call(); /* call main() to start interpreting */
+	call(); /* вызываем main и интерпретируем */
 
 	return 0;
 }
@@ -298,7 +303,7 @@ void interp_block(void)
 	} while (tok != FINISHED && block);
 }
 
-/* Load a program. */
+/* Загрузить программу */
 int load_program(char *p, char *fname)
 {
 	FILE *fp;
@@ -315,56 +320,56 @@ int load_program(char *p, char *fname)
 		i++;
 	} while (!feof(fp) && i < PROG_SIZE);
 
-	if (*(p - 2) == 0x1a)
-		*(p - 2) = '\0'; /* null terminate the program */
+	if (*(p - 2) == 0x1a)   // рудимент из бейсика. Ставится в конце исполняемого файла
+		*(p - 2) = '\0'; /* конец строки завершает программу */
 	else
 		*(p - 1) = '\0';
 	fclose(fp);
 	return 1;
 }
 
-/* Find the location of all functions in the program
-   and store global variables. */
-void prescan(void)
+/* Найти адреса всех функций
+   и запомнить глобальные переменные. */
+void prescan(void)  // Предварительный проход компилятора
 {
-	char *p, *tp;
+	char *p, *tp;   //*p - указатель на указатель ? (На prog). tp тоже указатель на prog???
 	char temp[ID_LEN + 1];
 	int datatype;
-	int brace = 0; /* When 0, this var tells us that
-					  current source position is outside
-					  of any function. */
+	int brace = 0; /* Если brace = 0, о текущая
+					  позиция оказателя программы находится
+					  в не какой-либо функции */
 
 	p = prog;
 	func_index = 0;
 	do
 	{
 		while (brace)
-		{ /* bypass code inside functions */
+		{ /* обхода кода функции внутри фигурных скобок */
 			get_token();
-			if (*token == '{')
+			if (*token == '{')  //когда встречаем открывающую скобку, увеличиваем brace на один
 				brace++;
 			if (*token == '}')
-				brace--;
+				brace--;    //когда встречаем закрывающую уменьшаем на один
 		}
 
-		tp = prog; /* save current position */
+		tp = prog; /* запоминаем текущую позицию */
 		get_token();
-		/* global var type or function return type */
+		/* тип глобальной переменной или возвращаемого значения функции */
 		if (tok == CHAR || tok == INT)
 		{
-			datatype = tok; /* save data type */
+			datatype = tok; /* сохранить тип данных */
 			get_token();
 			if (token_type == IDENTIFIER)
 			{
 				strcpy_s(temp, ID_LEN + 1, token);
 				get_token();
 				if (*token != '(')
-				{			   /* must be global var */
-					prog = tp; /* return to start of declaration */
+				{			   /* должно быть глобальной переменной */
+					prog = tp; /* вернуться в начало объявления */
 					decl_global();
 				}
 				else if (*token == '(')
-				{ /* must be a function */
+				{ /* должно быть функцией */
 					func_table[func_index].loc = prog;
 					func_table[func_index].ret_type = datatype;
 					strcpy_s(func_table[func_index].func_name, ID_LEN, temp);
@@ -372,8 +377,8 @@ void prescan(void)
 					while (*prog != ')')
 						prog++;
 					prog++;
-					/* now prog points to opening curly
-					   brace of function */
+					/* сейчас prog указывает на открывающуюся
+					   фигурную скобку функции */
 				}
 				else
 					putback();
@@ -399,20 +404,21 @@ char *find_func(char *name)
 	return NULL;
 }
 
-/* Declare a global variable. */
+/* Объявление глобальной переменной 
+ * Данные хранятся в списке global vars */
 void decl_global(void)
 {
 	int vartype;
 
-	get_token(); /* get type */
+	get_token(); /* получаем тип данных */
 
-	vartype = tok; /* save var type */
+	vartype = tok; /* запоминаем тип данных */
 
 	do
-	{ /* process comma-separated list */
+	{ /* обработка списка с разделителями запятыми */
 		global_vars[gvar_index].v_type = vartype;
-		global_vars[gvar_index].value = 0; /* init to 0 */
-		get_token();					   /* get name */
+		global_vars[gvar_index].value = 0; /* инициализируем нулем */
+		get_token();					   /* определяем имя */
 		strcpy_s(global_vars[gvar_index].var_name, ID_LEN, token);
 		get_token();
 		gvar_index++;
