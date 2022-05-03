@@ -23,7 +23,7 @@
 #define fopen_s(pFile, filename, mode) (((*(pFile)) = fopen((filename), (mode))) == NULL)
 #endif
 
-enum tok_types
+enum token_types
 {
 	DELIMITER,
 	IDENTIFIER,
@@ -99,21 +99,21 @@ jmp_buf execution_buffer;	/* hold environment for longjmp() */
 /* An array of these structures will hold the info
    associated with global variables.
 */
-struct var_type
+struct variable_type
 {
 	char variable_name[ID_LEN];
 	int variable_type;
 	int variable_value;
 } global_vars[NUM_GLOBAL_VARS];
 
-struct var_type local_var_stack[NUM_LOCAL_VARS];
+struct variable_type local_var_stack[NUM_LOCAL_VARS];
 
-struct func_type
+struct function_type
 {
 	char func_name[ID_LEN];
 	int ret_type;
 	char *loc; /* location of entry point in file */
-} func_table[NUM_FUNC];
+} function_table[NUM_FUNC];
 
 int call_stack[NUM_FUNC];
 
@@ -141,7 +141,7 @@ char current_token[80];
 char token_type, current_tok;
 
 int functos;				  /* index to top of function call stack */
-int func_index;				  /* index into function table_with_statements */
+int function_position;		  /* index into function table_with_statements */
 int global_variable_position; /* индекс глобальной переменной в таблице global_vars */
 int lvartos;				  /* index into local variable stack */
 
@@ -149,9 +149,9 @@ int ret_value;		 /* function return value */
 int ret_occurring;	 /* function return is occurring */
 int break_occurring; /* loop break is occurring */
 
-void print(void), pre_scan(void);
-void declare_global(void), call(void), shift_source_code_location_back(void);
-void decl_local(void), local_push(struct var_type i);
+void print(void), prescan_source_code(void);
+void declare_global_variables(void), call(void), shift_source_code_location_back(void);
+void decl_local(void), local_push(struct variable_type i);
 void eval_exp(int *value), syntax_error(int error);
 void exec_if(void), find_eob(void), exec_for(void);
 void get_params(void), get_args(void);
@@ -160,7 +160,7 @@ void assign_var(char *var_name, int value);
 int load_program(char *p, char *fname), find_var(char *s);
 void interp_block(void), func_ret(void);
 int func_pop(void), is_var(char *s);
-char *find_func(char *name), get_next_token(void);
+char *find_function_in_function_table(char *name), get_next_token(void);
 
 int main(int argc, char *argv[])
 {
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 
 	/* установка указателя на начало буфера программы  */
 	source_code_location = program_start_buffer;
-	pre_scan(); /* определение адресов всех функций
+	prescan_source_code(); /* определение адресов всех функций
 				  и глобальных переменных
 				  короче говоря, предварительный проход компилятора */
 
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 
 	/* вызываем функцию main
 	 * она всегда вызывается первой*/
-	source_code_location = find_func("main"); /* ищем начало программы */
+	source_code_location = find_function_in_function_table("main"); /* ищем начало программы */
 
 	if (!source_code_location)
 	{ /* main написан с ошибкой или отсутствует */
@@ -329,7 +329,7 @@ int load_program(char *p, char *fname)
 
 /* Найти адреса всех функций
    и запомнить глобальные переменные. */
-void pre_scan(void) // Предварительный проход компилятора
+void prescan_source_code(void) // Предварительный проход компилятора
 {
 	char *initial_source_code_location, *temp_source_code_location; //*p - указатель на указатель ? (На source_code_location). temp_source_code_location тоже указатель на source_code_location???
 	char temp_token[ID_LEN + 1];
@@ -339,7 +339,7 @@ void pre_scan(void) // Предварительный проход компил�
 					  в не какой-либо функции */
 
 	initial_source_code_location = source_code_location;
-	func_index = 0;
+	function_position = 0;
 	do
 	{
 		while (is_brace_open)
@@ -366,14 +366,14 @@ void pre_scan(void) // Предварительный проход компил�
 				if (*current_token != '(')
 				{													  /* должно быть глобальной переменной */
 					source_code_location = temp_source_code_location; /* вернуться в начало объявления */
-					declare_global();
+					declare_global_variables();
 				}
 				else if (*current_token == '(')
 				{ /* должно быть функцией */
-					func_table[func_index].loc = source_code_location;
-					func_table[func_index].ret_type = datatype;
-					strcpy_s(func_table[func_index].func_name, ID_LEN, temp_token);
-					func_index++;
+					function_table[function_position].loc = source_code_location;
+					function_table[function_position].ret_type = datatype;
+					strcpy_s(function_table[function_position].func_name, ID_LEN, temp_token);
+					function_position++;
 					while (*source_code_location != ')')
 						source_code_location++;
 					source_code_location++;
@@ -393,20 +393,20 @@ void pre_scan(void) // Предварительный проход компил�
 /* Return the entry point of the specified function.
    Return NULL if not found.
 */
-char *find_func(char *name)
+char *find_function_in_function_table(char *name)
 {
-	register int i;
+	register int function_pos;
 
-	for (i = 0; i < func_index; i++)
-		if (!strcmp(name, func_table[i].func_name))
-			return func_table[i].loc;
+	for (function_pos = 0; function_pos < function_position; function_pos++)
+		if (!strcmp(name, function_table[function_pos].func_name))
+			return function_table[function_pos].loc;
 
 	return NULL;
 }
 
-/* Объявление глобальной переменной
+/* Объявление глобальной переменной в ИНТЕРПРЕТИРУЕМОЙ программе
  * Данные хранятся в списке global vars */
-void declare_global(void)
+void declare_global_variables(void)
 {
 	int variable_type;
 
@@ -430,7 +430,7 @@ void declare_global(void)
 /* Declare a local variable. */
 void decl_local(void)
 {
-	struct var_type i;
+	struct variable_type i;
 
 	get_next_token(); /* get type */
 
@@ -454,7 +454,7 @@ void call(void)
 	char *loc, *temp;
 	int lvartemp;
 
-	loc = find_func(current_token); /* find entry point of function */
+	loc = find_function_in_function_table(current_token); /* find entry point of function */
 	if (loc == NULL)
 		syntax_error(FUNC_UNDEF); /* function not defined */
 	else
@@ -478,7 +478,7 @@ void call(void)
 void get_args(void)
 {
 	int value, count, temp[NUM_PARAMS];
-	struct var_type i;
+	struct variable_type i;
 
 	count = 0;
 	get_next_token();
@@ -506,7 +506,7 @@ void get_args(void)
 /* Get function parameters. */
 void get_params(void)
 {
-	struct var_type *p;
+	struct variable_type *p;
 	int i;
 
 	i = lvartos - 1;
@@ -548,7 +548,7 @@ void func_ret(void)
 }
 
 /* Push a local variable. */
-void local_push(struct var_type i)
+void local_push(struct variable_type i)
 {
 	if (lvartos >= NUM_LOCAL_VARS)
 	{

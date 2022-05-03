@@ -22,7 +22,7 @@
 #define strcpy_s(dest, count, source) strncpy((dest), (source), (count))
 #endif
 
-enum tok_types //константы к которым обращаемся при нахождении нужных совпадений в коде / для хранения данных в буфере
+enum token_types //константы к которым обращаемся при нахождении нужных совпадений в коде / для хранения данных в буфере
 {
 	DELIMITER,
 	IDENTIFIER,
@@ -96,7 +96,7 @@ extern jmp_buf execution_buffer;   /* hold environment for longjmp() */
 /* An array of these structures will hold the info
    associated with global variables.
 */
-extern struct var_type
+extern struct variable_type
 {
 	char variable_name[ID_LEN];
 	int variable_type;
@@ -104,7 +104,7 @@ extern struct var_type
 } global_vars[NUM_GLOBAL_VARS];
 
 /*  This is the function call stack. */
-extern struct func_type
+extern struct function_type
 {
 	char func_name[ID_LEN];
 	int ret_type;
@@ -166,7 +166,7 @@ int isdelim(char c), is_whitespace(char c);
 int find_var(char *s);
 int internal_func(char *s);
 int is_var(char *s);
-char *find_func(char *name), look_up(char *s), get_next_token(void);
+char *find_function_in_function_table(char *name), look_up(char *s), get_next_token(void);
 void call(void);
 static void str_replace(char *line, const char *search, const char *replace);
 
@@ -355,7 +355,7 @@ void atom(int *value)
 		{ /* call "standard library" function */
 			*value = (*intern_func[i].p)();
 		}
-		else if (find_func(current_token))
+		else if (find_function_in_function_table(current_token))
 		{ /* call user-defined function */
 			call();
 			*value = ret_value;
