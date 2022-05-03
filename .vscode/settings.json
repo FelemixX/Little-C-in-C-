@@ -37,6 +37,20 @@
     "*.hbs": "handlebars",
     "*.html": "html",
     "setjmp.h": "c",
-    "*.tcc": "cpp"
+    "*.tcc": "cpp",
+    "array": "cpp",
+    "string": "cpp",
+    "unordered_map": "cpp",
+    "algorithm": "cpp",
+    "memory": "cpp",
+    "optional": "cpp",
+    "system_error": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "cmath": "cpp",
+    "fstream": "cpp",
+    "istream": "cpp",
+    "ostream": "cpp",
+    "utility": "cpp"
   }
 }

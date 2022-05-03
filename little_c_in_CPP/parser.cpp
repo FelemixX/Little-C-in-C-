@@ -98,9 +98,9 @@ extern jmp_buf execution_buffer;   /* hold environment for longjmp() */
 */
 extern struct var_type
 {
-	char var_name[ID_LEN];
-	int v_type;
-	int value;
+	char variable_name[ID_LEN];
+	int variable_type;
+	int variable_value;
 } global_vars[NUM_GLOBAL_VARS];
 
 /*  This is the function call stack. */
@@ -500,6 +500,8 @@ char get_next_token(void)
 		return (token_type = DELIMITER);
 	}
 
+	// https://www.cplusplus.com/reference/cstring/strchr/
+	// strchr - Returns a pointer to the first occurrence of character in the C string str
 	if (strchr("{}", *source_code_location))
 	{ /* block delimiters */
 		*temp_token = *source_code_location;

@@ -101,9 +101,9 @@ jmp_buf execution_buffer;	/* hold environment for longjmp() */
 */
 struct var_type
 {
-	char var_name[ID_LEN];
-	int v_type;
-	int value;
+	char variable_name[ID_LEN];
+	int variable_type;
+	int variable_value;
 } global_vars[NUM_GLOBAL_VARS];
 
 struct var_type local_var_stack[NUM_LOCAL_VARS];
@@ -150,7 +150,7 @@ int ret_occurring;	 /* function return is occurring */
 int break_occurring; /* loop break is occurring */
 
 void print(void), pre_scan(void);
-void decl_global(void), call(void), putback(void);
+void declare_global(void), call(void), putback(void);
 void decl_local(void), local_push(struct var_type i);
 void eval_exp(int *value), sntx_err(int error);
 void exec_if(void), find_eob(void), exec_for(void);
@@ -332,7 +332,7 @@ int load_program(char *p, char *fname)
 void pre_scan(void) // Предварительный проход компилятора
 {
 	char *initial_source_code_location, *temp_source_code_location; //*p - указатель на указатель ? (На source_code_location). temp_source_code_location тоже указатель на source_code_location???
-	char temp[ID_LEN + 1];
+	char temp_token[ID_LEN + 1];
 	int datatype;
 	int is_brace_open = 0; /* Если is_brace_open = 0, о текущая
 					  позиция оказателя программы находится
@@ -360,18 +360,19 @@ void pre_scan(void) // Предварительный проход компил�
 			get_next_token();
 			if (token_type == IDENTIFIER)
 			{
-				strcpy_s(temp, ID_LEN + 1, current_token);
+				//
+				strcpy_s(temp_token, ID_LEN + 1, current_token);
 				get_next_token();
 				if (*current_token != '(')
 				{													  /* должно быть глобальной переменной */
 					source_code_location = temp_source_code_location; /* вернуться в начало объявления */
-					decl_global();
+					declare_global();
 				}
 				else if (*current_token == '(')
 				{ /* должно быть функцией */
 					func_table[func_index].loc = source_code_location;
 					func_table[func_index].ret_type = datatype;
-					strcpy_s(func_table[func_index].func_name, ID_LEN, temp);
+					strcpy_s(func_table[func_index].func_name, ID_LEN, temp_token);
 					func_index++;
 					while (*source_code_location != ')')
 						source_code_location++;
@@ -405,20 +406,20 @@ char *find_func(char *name)
 
 /* Объявление глобальной переменной
  * Данные хранятся в списке global vars */
-void decl_global(void)
+void declare_global(void)
 {
-	int vartype;
+	int variable_type;
 
 	get_next_token(); /* получаем тип данных */
 
-	vartype = current_tok; /* запоминаем тип данных */
+	variable_type = current_tok; /* запоминаем тип данных */
 
 	do
 	{ /* обработка списка с разделителями запятыми */
-		global_vars[gvar_index].v_type = vartype;
-		global_vars[gvar_index].value = 0; /* инициализируем нулем */
-		get_next_token();				   /* определяем имя */
-		strcpy_s(global_vars[gvar_index].var_name, ID_LEN, current_token);
+		global_vars[gvar_index].variable_type = variable_type;
+		global_vars[gvar_index].variable_value = 0; /* инициализируем нулем */
+		get_next_token();							/* определяем имя */
+		strcpy_s(global_vars[gvar_index].variable_name, ID_LEN, current_token);
 		get_next_token();
 		gvar_index++;
 	} while (*current_token == ',');
@@ -433,13 +434,13 @@ void decl_local(void)
 
 	get_next_token(); /* get type */
 
-	i.v_type = current_tok;
-	i.value = 0; /* init to 0 */
+	i.variable_type = current_tok;
+	i.variable_value = 0; /* init to 0 */
 
 	do
 	{					  /* process comma-separated list */
 		get_next_token(); /* get var name */
-		strcpy_s(i.var_name, ID_LEN, current_token);
+		strcpy_s(i.variable_name, ID_LEN, current_token);
 		local_push(i);
 		get_next_token();
 	} while (*current_token == ',');
@@ -496,8 +497,8 @@ void get_args(void)
 	/* now, push on local_var_stack in reverse order */
 	for (; count >= 0; count--)
 	{
-		i.value = temp[count];
-		i.v_type = ARG;
+		i.variable_value = temp[count];
+		i.variable_type = ARG;
 		local_push(i);
 	}
 }
@@ -518,12 +519,12 @@ void get_params(void)
 			if (current_tok != INT && current_tok != CHAR)
 				sntx_err(TYPE_EXPECTED);
 
-			p->v_type = token_type;
+			p->variable_type = token_type;
 			get_next_token();
 
 			/* link parameter name with argument already on
 			   local var stack */
-			strcpy_s(p->var_name, ID_LEN, current_token);
+			strcpy_s(p->variable_name, ID_LEN, current_token);
 			get_next_token();
 			i--;
 		}
@@ -603,18 +604,18 @@ void assign_var(char *var_name, int value)
 	/* first, see if it's a local variable */
 	for (i = lvartos - 1; i >= call_stack[functos - 1]; i--)
 	{
-		if (!strcmp(local_var_stack[i].var_name, var_name))
+		if (!strcmp(local_var_stack[i].variable_name, var_name))
 		{
-			local_var_stack[i].value = value;
+			local_var_stack[i].variable_value = value;
 			return;
 		}
 	}
 	if (i < call_stack[functos - 1])
 		/* if not local, try global var table_with_statements */
 		for (i = 0; i < NUM_GLOBAL_VARS; i++)
-			if (!strcmp(global_vars[i].var_name, var_name))
+			if (!strcmp(global_vars[i].variable_name, var_name))
 			{
-				global_vars[i].value = value;
+				global_vars[i].variable_value = value;
 				return;
 			}
 	sntx_err(NOT_VAR); /* variable not found */
@@ -627,13 +628,13 @@ int find_var(char *s)
 
 	/* first, see if it's a local variable */
 	for (i = lvartos - 1; i >= call_stack[functos - 1]; i--)
-		if (!strcmp(local_var_stack[i].var_name, current_token))
-			return local_var_stack[i].value;
+		if (!strcmp(local_var_stack[i].variable_name, current_token))
+			return local_var_stack[i].variable_value;
 
 	/* otherwise, try global vars */
 	for (i = 0; i < NUM_GLOBAL_VARS; i++)
-		if (!strcmp(global_vars[i].var_name, s))
-			return global_vars[i].value;
+		if (!strcmp(global_vars[i].variable_name, s))
+			return global_vars[i].variable_value;
 
 	sntx_err(NOT_VAR); /* variable not found */
 	return -1;
@@ -648,12 +649,12 @@ int is_var(char *s)
 
 	/* first, see if it's a local variable */
 	for (i = lvartos - 1; i >= call_stack[functos - 1]; i--)
-		if (!strcmp(local_var_stack[i].var_name, current_token))
+		if (!strcmp(local_var_stack[i].variable_name, current_token))
 			return 1;
 
 	/* otherwise, try global vars */
 	for (i = 0; i < NUM_GLOBAL_VARS; i++)
-		if (!strcmp(global_vars[i].var_name, s))
+		if (!strcmp(global_vars[i].variable_name, s))
 			return 1;
 
 	return 0;
