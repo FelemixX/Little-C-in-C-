@@ -138,9 +138,9 @@ struct intern_func_type
 	{"", 0} /* null terminate the list */
 };
 
-extern char token[80];	/* string representation of token */
-extern char token_type; /* contains type of token */
-extern char tok;		/* internal representation of token */
+extern char token[80];	 /* string representation of token */
+extern char token_type;	 /* contains type of token */
+extern char current_tok; /* internal representation of token */
 
 extern int ret_value; /* function return value */
 
@@ -166,14 +166,14 @@ int isdelim(char c), is_whitespace(char c);
 int find_var(char *s);
 int internal_func(char *s);
 int is_var(char *s);
-char *find_func(char *name), look_up(char *s), get_token(void);
+char *find_func(char *name), look_up(char *s), get_next_token(void);
 void call(void);
 static void str_replace(char *line, const char *search, const char *replace);
 
 /* Entry point into parser. */
 void eval_exp(int *value)
 {
-	get_token();
+	get_next_token();
 	if (!*token)
 	{
 		sntx_err(NO_EXP);
@@ -201,10 +201,10 @@ void eval_exp0(int *value)
 		{ /* if a var, see if assignment */
 			strcpy_s(temp, ID_LEN, token);
 			temp_tok = token_type;
-			get_token();
+			get_next_token();
 			if (*token == '=')
 			{ /* is an assignment */
-				get_token();
+				get_next_token();
 				eval_exp0(value);		  /* get value to assign */
 				assign_var(temp, *value); /* assign the value */
 				return;
@@ -232,7 +232,7 @@ void eval_exp1(int *value)
 	op = *token;
 	if (strchr(relops, op))
 	{
-		get_token();
+		get_next_token();
 		eval_exp2(&partial_value);
 		switch (op)
 		{ /* perform the relational operation */
@@ -267,7 +267,7 @@ void eval_exp2(int *value)
 	eval_exp3(value);
 	while ((op = *token) == '+' || op == '-')
 	{
-		get_token();
+		get_next_token();
 		eval_exp3(&partial_value);
 		switch (op)
 		{ /* add or subtract */
@@ -290,7 +290,7 @@ void eval_exp3(int *value)
 	eval_exp4(value);
 	while ((op = *token) == '*' || op == '/' || op == '%')
 	{
-		get_token();
+		get_next_token();
 		eval_exp4(&partial_value);
 		switch (op)
 		{ /* mul, div, or modulus */
@@ -319,7 +319,7 @@ void eval_exp4(int *value)
 	if (*token == '+' || *token == '-')
 	{
 		op = *token;
-		get_token();
+		get_next_token();
 	}
 	eval_exp5(value);
 	if (op)
@@ -332,11 +332,11 @@ void eval_exp5(int *value)
 {
 	if (*token == '(')
 	{
-		get_token();
+		get_next_token();
 		eval_exp0(value); /* get subexpression */
 		if (*token != ')')
 			sntx_err(PAREN_EXPECTED);
-		get_token();
+		get_next_token();
 	}
 	else
 		atom(value);
@@ -362,11 +362,11 @@ void atom(int *value)
 		}
 		else
 			*value = find_var(token); /* get var's value */
-		get_token();
+		get_next_token();
 		return;
 	case NUMBER: /* is numeric constant */
 		*value = atoi(token);
-		get_token();
+		get_next_token();
 		return;
 	case DELIMITER: /* see if character constant */
 		if (*token == '\'')
@@ -376,7 +376,7 @@ void atom(int *value)
 			if (*source_code_location != '\'')
 				sntx_err(QUOTE_EXPECTED);
 			source_code_location++;
-			get_token();
+			get_next_token();
 			return;
 		}
 		if (*token == ')')
@@ -455,13 +455,13 @@ void sntx_err(int error)
 }
 
 /* Get a token. */
-char get_token(void)
+char get_next_token(void)
 {
 
 	register char *temp_token;
 
 	token_type = 0;
-	tok = 0;
+	current_tok = 0;
 
 	temp_token = token;
 	*temp_token = '\0';
@@ -496,7 +496,7 @@ char get_token(void)
 	if (*source_code_location == '\0')
 	{ /* end of file */
 		*token = '\0';
-		tok = FINISHED;
+		current_tok = FINISHED;
 		return (token_type = DELIMITER);
 	}
 
@@ -546,7 +546,7 @@ char get_token(void)
 	if (*source_code_location == '\0')
 	{ /* end of file */
 		*token = '\0';
-		tok = FINISHED;
+		current_tok = FINISHED;
 		return (token_type = DELIMITER);
 	}
 
@@ -669,8 +669,8 @@ char get_token(void)
 	/* see if a string is a command or a variable */
 	if (token_type == TEMP)
 	{
-		tok = look_up(token); /* convert to internal rep */
-		if (tok)
+		current_tok = look_up(token); /* convert to internal rep */
+		if (current_tok)
 			token_type = KEYWORD; /* is a keyword */
 		else
 			token_type = IDENTIFIER;

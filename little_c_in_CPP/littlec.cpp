@@ -138,7 +138,7 @@ struct commands
 };
 
 char token[80];
-char token_type, tok;
+char token_type, current_tok;
 
 int functos;	/* index to top of function call stack */
 int func_index; /* index into function table_with_statements */
@@ -160,7 +160,7 @@ void assign_var(char *var_name, int value);
 int load_program(char *p, char *fname), find_var(char *s);
 void interp_block(void), func_ret(void);
 int func_pop(void), is_var(char *s);
-char *find_func(char *name), get_token(void);
+char *find_func(char *name), get_next_token(void);
 
 int main(int argc, char *argv[])
 {
@@ -225,7 +225,7 @@ void interp_block(void)
 
 	do
 	{
-		token_type = get_token();
+		token_type = get_next_token();
 
 		/* If interpreting single statement, return on
 		   first semicolon.
@@ -249,7 +249,7 @@ void interp_block(void)
 				return; /* is a }, so return */
 		}
 		else /* is keyword */
-			switch (tok)
+			switch (current_tok)
 			{
 			case CHAR:
 			case INT: /* declare local variables */
@@ -299,7 +299,7 @@ void interp_block(void)
 			case END:
 				exit(0);
 			}
-	} while (tok != FINISHED && block);
+	} while (current_tok != FINISHED && block);
 }
 
 /* Загрузить программу */
@@ -331,7 +331,7 @@ int load_program(char *p, char *fname)
    и запомнить глобальные переменные. */
 void pre_scan(void) // Предварительный проход компилятора
 {
-	char *p, *tp; //*p - указатель на указатель ? (На source_code_location). tp тоже указатель на source_code_location???
+	char *p, *temp_source_code_location; //*p - указатель на указатель ? (На source_code_location). temp_source_code_location тоже указатель на source_code_location???
 	char temp[ID_LEN + 1];
 	int datatype;
 	int brace = 0; /* Если brace = 0, о текущая
@@ -344,27 +344,27 @@ void pre_scan(void) // Предварительный проход компил�
 	{
 		while (brace)
 		{ /* обхода кода функции внутри фигурных скобок */
-			get_token();
+			get_next_token();
 			if (*token == '{') //когда встречаем открывающую скобку, увеличиваем brace на один
 				brace++;
 			if (*token == '}')
 				brace--; //когда встречаем закрывающую уменьшаем на один
 		}
 
-		tp = source_code_location; /* запоминаем текущую позицию */
-		get_token();
+		temp_source_code_location = source_code_location; /* запоминаем текущую позицию */
+		get_next_token();
 		/* тип глобальной переменной или возвращаемого значения функции */
-		if (tok == CHAR || tok == INT)
+		if (current_tok == CHAR || current_tok == INT)
 		{
-			datatype = tok; /* сохранить тип данных */
-			get_token();
+			datatype = current_tok; /* сохранить тип данных */
+			get_next_token();
 			if (token_type == IDENTIFIER)
 			{
 				strcpy_s(temp, ID_LEN + 1, token);
-				get_token();
+				get_next_token();
 				if (*token != '(')
-				{							   /* должно быть глобальной переменной */
-					source_code_location = tp; /* вернуться в начало объявления */
+				{													  /* должно быть глобальной переменной */
+					source_code_location = temp_source_code_location; /* вернуться в начало объявления */
 					decl_global();
 				}
 				else if (*token == '(')
@@ -385,7 +385,7 @@ void pre_scan(void) // Предварительный проход компил�
 		}
 		else if (*token == '{')
 			brace++;
-	} while (tok != FINISHED);
+	} while (current_tok != FINISHED);
 	source_code_location = p;
 }
 
@@ -409,17 +409,17 @@ void decl_global(void)
 {
 	int vartype;
 
-	get_token(); /* получаем тип данных */
+	get_next_token(); /* получаем тип данных */
 
-	vartype = tok; /* запоминаем тип данных */
+	vartype = current_tok; /* запоминаем тип данных */
 
 	do
 	{ /* обработка списка с разделителями запятыми */
 		global_vars[gvar_index].v_type = vartype;
 		global_vars[gvar_index].value = 0; /* инициализируем нулем */
-		get_token();					   /* определяем имя */
+		get_next_token();				   /* определяем имя */
 		strcpy_s(global_vars[gvar_index].var_name, ID_LEN, token);
-		get_token();
+		get_next_token();
 		gvar_index++;
 	} while (*token == ',');
 	if (*token != ';')
@@ -431,17 +431,17 @@ void decl_local(void)
 {
 	struct var_type i;
 
-	get_token(); /* get type */
+	get_next_token(); /* get type */
 
-	i.v_type = tok;
+	i.v_type = current_tok;
 	i.value = 0; /* init to 0 */
 
 	do
-	{				 /* process comma-separated list */
-		get_token(); /* get var name */
+	{					  /* process comma-separated list */
+		get_next_token(); /* get var name */
 		strcpy_s(i.var_name, ID_LEN, token);
 		local_push(i);
-		get_token();
+		get_next_token();
 	} while (*token == ',');
 	if (*token != ';')
 		sntx_err(SEMI_EXPECTED);
@@ -480,7 +480,7 @@ void get_args(void)
 	struct var_type i;
 
 	count = 0;
-	get_token();
+	get_next_token();
 	if (*token != '(')
 		sntx_err(PAREN_EXPECTED);
 
@@ -489,7 +489,7 @@ void get_args(void)
 	{
 		eval_exp(&value);
 		temp[count] = value; /* save temporarily */
-		get_token();
+		get_next_token();
 		count++;
 	} while (*token == ',');
 	count--;
@@ -511,20 +511,20 @@ void get_params(void)
 	i = lvartos - 1;
 	do
 	{ /* process comma-separated list of parameters */
-		get_token();
+		get_next_token();
 		p = &local_var_stack[i];
 		if (*token != ')')
 		{
-			if (tok != INT && tok != CHAR)
+			if (current_tok != INT && current_tok != CHAR)
 				sntx_err(TYPE_EXPECTED);
 
 			p->v_type = token_type;
-			get_token();
+			get_next_token();
 
 			/* link parameter name with argument already on
 			   local var stack */
 			strcpy_s(p->var_name, ID_LEN, token);
-			get_token();
+			get_next_token();
 			i--;
 		}
 		else
@@ -674,9 +674,9 @@ void exec_if(void)
 	{				/* otherwise skip around IF block and
 					process the ELSE, if present */
 		find_eob(); /* find start of next line */
-		get_token();
+		get_next_token();
 
-		if (tok != ELSE)
+		if (current_tok != ELSE)
 		{
 			putback(); /* restore token if
 						  no ELSE is present */
@@ -695,7 +695,7 @@ void exec_while(void)
 	break_occurring = 0; /* clear the break flag */
 	putback();
 	temp = source_code_location; /* save location of top of while loop */
-	get_token();
+	get_next_token();
 	eval_exp(&cond); /* check the conditional expression */
 	if (cond)
 	{
@@ -724,8 +724,8 @@ void exec_do(void)
 	temp = source_code_location; /* save location of top of do loop */
 	break_occurring = 0;		 /* clear the break flag */
 
-	get_token();	/* get start of loop */
-	interp_block(); /* interpret loop */
+	get_next_token(); /* get start of loop */
+	interp_block();	  /* interpret loop */
 	if (ret_occurring > 0)
 	{
 		return;
@@ -735,8 +735,8 @@ void exec_do(void)
 		break_occurring = 0;
 		return;
 	}
-	get_token();
-	if (tok != WHILE)
+	get_next_token();
+	if (current_tok != WHILE)
 		sntx_err(WHILE_EXPECTED);
 	eval_exp(&cond); /* check the loop condition */
 	if (cond)
@@ -749,11 +749,11 @@ void find_eob(void)
 {
 	int brace;
 
-	get_token();
+	get_next_token();
 	brace = 1;
 	do
 	{
-		get_token();
+		get_next_token();
 		if (*token == '{')
 			brace++;
 		else if (*token == '}')
@@ -769,7 +769,7 @@ void exec_for(void)
 	int brace;
 
 	break_occurring = 0; /* clear the break flag */
-	get_token();
+	get_next_token();
 	eval_exp(&cond); /* initialization expression */
 	if (*token != ';')
 		sntx_err(SEMI_EXPECTED);
@@ -787,7 +787,7 @@ void exec_for(void)
 		brace = 1;
 		while (brace)
 		{
-			get_token();
+			get_next_token();
 			if (*token == '(')
 				brace++;
 			if (*token == ')')

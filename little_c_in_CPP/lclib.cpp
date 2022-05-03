@@ -14,7 +14,7 @@
 extern char *source_code_location; /* points to current location in program */
 extern char token[80];			   /* holds string representation of token */
 extern char token_type;			   /* contains type of token */
-extern char tok;				   /* holds the internal representation of token */
+extern char current_tok;		   /* holds the internal representation of token */
 
 enum tok_types
 {
@@ -54,7 +54,7 @@ enum error_msg
 	DIV_BY_ZERO
 };
 
-int get_token(void);
+int get_next_token(void);
 void sntx_err(int error), eval_exp(int *result);
 void putback(void);
 
@@ -89,18 +89,18 @@ int call_putch(void)
 /* Call puts(). */
 int call_puts(void)
 {
-	get_token();
+	get_next_token();
 	if (*token != '(')
 		sntx_err(PAREN_EXPECTED);
-	get_token();
+	get_next_token();
 	if (token_type != STRING)
 		sntx_err(QUOTE_EXPECTED);
 	puts(token);
-	get_token();
+	get_next_token();
 	if (*token != ')')
 		sntx_err(PAREN_EXPECTED);
 
-	get_token();
+	get_next_token();
 	if (*token != ';')
 		sntx_err(SEMI_EXPECTED);
 	putback();
@@ -112,11 +112,11 @@ int print(void)
 {
 	int i;
 
-	get_token();
+	get_next_token();
 	if (*token != '(')
 		sntx_err(PAREN_EXPECTED);
 
-	get_token();
+	get_next_token();
 	if (token_type == STRING)
 	{ /* output a string */
 		printf("%s ", token);
@@ -128,12 +128,12 @@ int print(void)
 		printf("%d ", i);
 	}
 
-	get_token();
+	get_next_token();
 
 	if (*token != ')')
 		sntx_err(PAREN_EXPECTED);
 
-	get_token();
+	get_next_token();
 	if (*token != ';')
 		sntx_err(SEMI_EXPECTED);
 	putback();
