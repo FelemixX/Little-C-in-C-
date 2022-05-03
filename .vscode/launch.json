@@ -1,7 +1,6 @@
 {
   "version": "0.2.0",
-  "configurations": [
-    {
+  "configurations": [{
       "type": "node",
       "request": "launch",
       "name": "Launch program",
@@ -10,6 +9,44 @@
       ],
       "program": "${workspaceFolder}\\little_c_in_nodejs\\littlec.js",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "g++.exe build and debug active file",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:\\MinGW\\mingw32\\bin\\gdb.exe",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "preLaunchTask": "g++.exe build active file"
+    },
+    {
+      "name": "g++ build & run active file",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "miDebuggerPath": "C:\\MinGW\\mingw32\\bin\\gdb.exe",
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }],
+      "preLaunchTask": "g++ build & run active file"
     },
     {
       "name": "C/C++ Runner: Debug Session",
@@ -24,13 +61,11 @@
       "MIMode": "gdb",
       "miDebuggerPath": "C:/MinGW/mingw32/bin/gdb.exe",
       "console": "integratedTerminal",
-      "setupCommands": [
-        {
-          "description": "Enable pretty-printing for gdb",
-          "text": "-enable-pretty-printing",
-          "ignoreFailures": true
-        }
-      ]
+      "setupCommands": [{
+        "description": "Enable pretty-printing for gdb",
+        "text": "-enable-pretty-printing",
+        "ignoreFailures": true
+      }]
     }
   ]
 }

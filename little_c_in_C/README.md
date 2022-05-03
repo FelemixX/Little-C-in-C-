@@ -31,3 +31,9 @@ littlec.exe test.c
 ```
 littlec.exe test2.c
 ```
+
+### Компиляция интерпретатора, а потом запуск его с тестовой программой
+
+```
+cd $dir && gcc *.c -o $fileNameWithoutExt && $dir$fileNameWithoutExt ..\\little_c_in_C_test_programs\\test.c
+```
