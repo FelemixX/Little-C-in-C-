@@ -22,7 +22,7 @@
 #define strcpy_s(dest, count, source) strncpy((dest), (source), (count))
 #endif
 
-enum tok_types
+enum tok_types	//константы к которым обращаемся при нахождении нужных совпадений в коде / для хранения данных в буфере
 {
 	DELIMITER,
 	IDENTIFIER,
@@ -33,7 +33,7 @@ enum tok_types
 	BLOCK
 };
 
-enum tokens
+enum tokens	//тут храним операторы
 {
 	ARG,
 	CHAR,
@@ -67,7 +67,7 @@ enum double_ops
    NOTE: SYNTAX is a generic error message used when
    nothing else seems appropriate.
 */
-enum error_msg
+enum error_msg	//коды ошибок
 {
 	SYNTAX,
 	UNBAL_PARENS,
