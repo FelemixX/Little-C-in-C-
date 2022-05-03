@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 const NUM_FUNC = 100;
 const NUM_GLOBAL_VARS = 100;
 const NUM_LOCAL_VARS = 200;
@@ -146,11 +148,11 @@ function main() {
   // }
 
   /* load the program to execute */
-  if (!load_program(p_buf, argv[1])) exit(1);
+  // if (!load_program(p_buf, argv[1])) exit(1);
   // сохраняет в состояние стека в переменную (зачем?)
   // if (setjmp(e_buf))
   // 	exit(1); /* initialize long jump buffer */
-
+  load_program(argv[1]);
   gvar_index = 0; /* initialize global variable index */
 
   /* set program pointer to start of program buffer */
@@ -178,4 +180,76 @@ function main() {
   return 0;
 }
 
-function load_program(fname) {}
+function load_program(fname) {
+  // https://nodejs.dev/learn/reading-files-with-nodejs
+  try {
+    let data = fs.readFileSync(fname, "utf8");
+    data += "\0";
+    console.log(data);
+    p_buf = data;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function prescan()
+{
+	let p, tp;
+	let temp = new Array(ID_LEN + 1);
+	let datatype;
+	let brace = 0; /* When 0, this var tells us that
+					  current source position is outside
+					  of any function. */
+
+	p = prog;
+	func_index = 0;
+	do
+	{
+		while (brace)
+		{ /* bypass code inside functions */
+			get_token();
+			if (*token == '{')
+				brace++;
+			if (*token == '}')
+				brace--;
+		}
+
+		tp = prog; /* save current position */
+		get_token();
+		/* global var type or function return type */
+		if (tok == CHAR || tok == INT)
+		{
+			datatype = tok; /* save data type */
+			get_token();
+			if (token_type == IDENTIFIER)
+			{
+				strcpy_s(temp, ID_LEN + 1, token);
+				get_token();
+				if (*token != '(')
+				{			   /* must be global var */
+					prog = tp; /* return to start of declaration */
+					decl_global();
+				}
+				else if (*token == '(')
+				{ /* must be a function */
+					func_table[func_index].loc = prog;
+					func_table[func_index].ret_type = datatype;
+					strcpy_s(func_table[func_index].func_name, ID_LEN, temp);
+					func_index++;
+					while (*prog != ')')
+						prog++;
+					prog++;
+					/* now prog points to opening curly
+					   brace of function */
+				}
+				else
+					putback();
+			}
+		}
+		else if (*token == '{')
+			brace++;
+	} while (tok != FINISHED);
+	prog = p;
+}
+
+main();
