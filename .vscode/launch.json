@@ -17,7 +17,7 @@
       "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
       "args": ["..\\little_c_in_C_test_programs\\test.c"],
       "stopAtEntry": false,
-      "cwd": "D:\\programming\\frontend\\little_c\\little_c_in_C\\",
+      "cwd": "D:\\programming\\frontend\\little_c\\little_c_in_CPP\\",
       "environment": [],
       "externalConsole": false,
       "MIMode": "gdb",

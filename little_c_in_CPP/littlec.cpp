@@ -92,7 +92,7 @@ enum error_msg
 	DIV_BY_ZERO
 };
 
-char *prog;					/* current location in source code */
+char *source_code_location; /* current location in source code */
 char *program_start_buffer; /* points to start of program buffer */
 jmp_buf execution_buffer;	/* hold environment for longjmp() */
 
@@ -118,12 +118,12 @@ struct func_type
 int call_stack[NUM_FUNC];
 
 struct commands
-{ /* keyword lookup table */
+{ /* keyword lookup table_with_statements */
 	char command[20];
 	char tok;
-} table[] = {
+} table_with_statements[] = {
 	/* Commands must be entered lowercase */
-	{"if", IF}, /* in this table. */
+	{"if", IF}, /* in this table_with_statements. */
 	{"else", ELSE},
 	{"for", FOR},
 	{"do", DO},
@@ -134,14 +134,14 @@ struct commands
 	{"continue", CONTINUE},
 	{"break", BREAK},
 	{"end", END},
-	{"", END} /* mark end of table */
+	{"", END} /* mark end of table_with_statements */
 };
 
 char token[80];
 char token_type, tok;
 
 int functos;	/* index to top of function call stack */
-int func_index; /* index into function table */
+int func_index; /* index into function table_with_statements */
 int gvar_index; /* индекс глобальной переменной в таблице global_vars */
 int lvartos;	/* index into local variable stack */
 
@@ -149,7 +149,7 @@ int ret_value;		 /* function return value */
 int ret_occurring;	 /* function return is occurring */
 int break_occurring; /* loop break is occurring */
 
-void print(void), prescan(void);
+void print(void), pre_scan(void);
 void decl_global(void), call(void), putback(void);
 void decl_local(void), local_push(struct var_type i);
 void eval_exp(int *value), sntx_err(int error);
@@ -164,8 +164,6 @@ char *find_func(char *name), get_token(void);
 
 int main(int argc, char *argv[])
 {
-	char *test_char = "qweqweqwea";
-	test_char;
 	if (argc != 2)
 	{
 		printf("Usage: littlec <filename>\n");
@@ -181,7 +179,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* загрузить программу для выполнения */
-	if (!load_program(program_start_buffer, argv[1]))
+	char *file_name = argv[1];
+	if (!load_program(program_start_buffer, file_name))
 		exit(1);
 	if (setjmp(execution_buffer))
 		exit(1); /* инициализация буфера longjump */
@@ -189,8 +188,8 @@ int main(int argc, char *argv[])
 	gvar_index = 0; /* инициализация индекса глобальных переменных */
 
 	/* установка указателя на начало буфера программы  */
-	prog = program_start_buffer;
-	prescan(); /* определение адресов всех функций
+	source_code_location = program_start_buffer;
+	pre_scan(); /* определение адресов всех функций
 				  и глобальных переменных
 				  короче говоря, предварительный проход компилятора */
 
@@ -200,15 +199,15 @@ int main(int argc, char *argv[])
 
 	/* вызываем функцию main
 	 * она всегда вызывается первой*/
-	prog = find_func("main"); /* ищем начало программы */
+	source_code_location = find_func("main"); /* ищем начало программы */
 
-	if (!prog)
+	if (!source_code_location)
 	{ /* main написан с ошибкой или отсутствует */
 		printf("main() not found.\n");
 		exit(1);
 	}
 
-	prog--; /* возвращаемся к открывающей ( */
+	source_code_location--; /* возвращаемся к открывающей ( */
 	strcpy_s(token, 80, "main");
 	call(); /* вызываем main и интерпретируем */
 
@@ -330,16 +329,16 @@ int load_program(char *p, char *fname)
 
 /* Найти адреса всех функций
    и запомнить глобальные переменные. */
-void prescan(void) // Предварительный проход компилятора
+void pre_scan(void) // Предварительный проход компилятора
 {
-	char *p, *tp; //*p - указатель на указатель ? (На prog). tp тоже указатель на prog???
+	char *p, *tp; //*p - указатель на указатель ? (На source_code_location). tp тоже указатель на source_code_location???
 	char temp[ID_LEN + 1];
 	int datatype;
 	int brace = 0; /* Если brace = 0, о текущая
 					  позиция оказателя программы находится
 					  в не какой-либо функции */
 
-	p = prog;
+	p = source_code_location;
 	func_index = 0;
 	do
 	{
@@ -352,7 +351,7 @@ void prescan(void) // Предварительный проход компиля
 				brace--; //когда встречаем закрывающую уменьшаем на один
 		}
 
-		tp = prog; /* запоминаем текущую позицию */
+		tp = source_code_location; /* запоминаем текущую позицию */
 		get_token();
 		/* тип глобальной переменной или возвращаемого значения функции */
 		if (tok == CHAR || tok == INT)
@@ -364,19 +363,19 @@ void prescan(void) // Предварительный проход компиля
 				strcpy_s(temp, ID_LEN + 1, token);
 				get_token();
 				if (*token != '(')
-				{			   /* должно быть глобальной переменной */
-					prog = tp; /* вернуться в начало объявления */
+				{							   /* должно быть глобальной переменной */
+					source_code_location = tp; /* вернуться в начало объявления */
 					decl_global();
 				}
 				else if (*token == '(')
 				{ /* должно быть функцией */
-					func_table[func_index].loc = prog;
+					func_table[func_index].loc = source_code_location;
 					func_table[func_index].ret_type = datatype;
 					strcpy_s(func_table[func_index].func_name, ID_LEN, temp);
 					func_index++;
-					while (*prog != ')')
-						prog++;
-					prog++;
+					while (*source_code_location != ')')
+						source_code_location++;
+					source_code_location++;
 					/* сейчас prog указывает на открывающуюся
 					   фигурную скобку функции */
 				}
@@ -387,7 +386,7 @@ void prescan(void) // Предварительный проход компиля
 		else if (*token == '{')
 			brace++;
 	} while (tok != FINISHED);
-	prog = p;
+	source_code_location = p;
 }
 
 /* Return the entry point of the specified function.
@@ -459,17 +458,17 @@ void call(void)
 		sntx_err(FUNC_UNDEF); /* function not defined */
 	else
 	{
-		lvartemp = lvartos;	  /* save local var stack index */
-		get_args();			  /* get function arguments */
-		temp = prog;		  /* save return location */
-		func_push(lvartemp);  /* save local var stack index */
-		prog = loc;			  /* reset prog to start of function */
-		ret_occurring = 0;	  /* P the return occurring variable */
-		get_params();		  /* load the function's parameters with the values of the arguments */
-		interp_block();		  /* interpret the function */
-		ret_occurring = 0;	  /* Clear the return occurring variable */
-		prog = temp;		  /* reset the program pointer */
-		lvartos = func_pop(); /* reset the local var stack */
+		lvartemp = lvartos;			 /* save local var stack index */
+		get_args();					 /* get function arguments */
+		temp = source_code_location; /* save return location */
+		func_push(lvartemp);		 /* save local var stack index */
+		source_code_location = loc;	 /* reset prog to start of function */
+		ret_occurring = 0;			 /* P the return occurring variable */
+		get_params();				 /* load the function's parameters with the values of the arguments */
+		interp_block();				 /* interpret the function */
+		ret_occurring = 0;			 /* Clear the return occurring variable */
+		source_code_location = temp; /* reset the program pointer */
+		lvartos = func_pop();		 /* reset the local var stack */
 	}
 }
 
@@ -611,7 +610,7 @@ void assign_var(char *var_name, int value)
 		}
 	}
 	if (i < call_stack[functos - 1])
-		/* if not local, try global var table */
+		/* if not local, try global var table_with_statements */
 		for (i = 0; i < NUM_GLOBAL_VARS; i++)
 			if (!strcmp(global_vars[i].var_name, var_name))
 			{
@@ -695,7 +694,7 @@ void exec_while(void)
 
 	break_occurring = 0; /* clear the break flag */
 	putback();
-	temp = prog; /* save location of top of while loop */
+	temp = source_code_location; /* save location of top of while loop */
 	get_token();
 	eval_exp(&cond); /* check the conditional expression */
 	if (cond)
@@ -712,7 +711,7 @@ void exec_while(void)
 		find_eob();
 		return;
 	}
-	prog = temp; /* loop back to top */
+	source_code_location = temp; /* loop back to top */
 }
 
 /* Execute a do loop. */
@@ -722,8 +721,8 @@ void exec_do(void)
 	char *temp;
 
 	putback();
-	temp = prog;		 /* save location of top of do loop */
-	break_occurring = 0; /* clear the break flag */
+	temp = source_code_location; /* save location of top of do loop */
+	break_occurring = 0;		 /* clear the break flag */
 
 	get_token();	/* get start of loop */
 	interp_block(); /* interpret loop */
@@ -741,7 +740,7 @@ void exec_do(void)
 		sntx_err(WHILE_EXPECTED);
 	eval_exp(&cond); /* check the loop condition */
 	if (cond)
-		prog = temp; /* if true loop; otherwise,
+		source_code_location = temp; /* if true loop; otherwise,
 					   continue on */
 }
 
@@ -774,15 +773,15 @@ void exec_for(void)
 	eval_exp(&cond); /* initialization expression */
 	if (*token != ';')
 		sntx_err(SEMI_EXPECTED);
-	prog++; /* get past the ; */
-	temp = prog;
+	source_code_location++; /* get past the ; */
+	temp = source_code_location;
 	for (;;)
 	{
 		eval_exp(&cond); /* check the condition */
 		if (*token != ';')
 			sntx_err(SEMI_EXPECTED);
-		prog++; /* get past the ; */
-		temp2 = prog;
+		source_code_location++; /* get past the ; */
+		temp2 = source_code_location;
 
 		/* find the start of the for block */
 		brace = 1;
@@ -813,8 +812,8 @@ void exec_for(void)
 			find_eob();
 			return;
 		}
-		prog = temp2;
-		eval_exp(&cond); /* do the increment */
-		prog = temp;	 /* loop back to top */
+		source_code_location = temp2;
+		eval_exp(&cond);			 /* do the increment */
+		source_code_location = temp; /* loop back to top */
 	}
 }

@@ -6,13 +6,13 @@
 			"args": [
 				"-g",
 				// "${file}",
-				"*.c",
+				"*.cpp",
 				"-o",
 				"${fileDirname}\\${fileBasenameNoExtension}.exe",
 
 			],
 			"options": {
-				"cwd": "D:\\programming\\frontend\\little_c\\little_c_in_C\\"
+				"cwd": "D:\\programming\\frontend\\little_c\\little_c_in_CPP\\"
 			}
 		},
 		{
