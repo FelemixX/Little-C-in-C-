@@ -30,8 +30,8 @@
   "code-runner.executorMap": {
     // "cpp": "cd $dir && g++ -std=c++17 $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
     "cpp": "cd $dir && g++ -std=c++17 *.cpp -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
-    // "c": "cd $dir && gcc *.c -o $fileNameWithoutExt && $dir$fileNameWithoutExt ..\\little_c_in_C_test_programs\\test.c",
-    "c": "cd $dir && g++ -std=c++17 $fileNameWithoutExt.c -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+    "c": "cd $dir && gcc *.c -o $fileNameWithoutExt && $dir$fileNameWithoutExt ..\\little_c_in_C_test_programs\\test.c",
+    // "c": "cd $dir && g++ -std=c++17 $fileNameWithoutExt.c -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
     "python": "cd $dir && python $fileName"
     // "python": "cd $dir && mypy $fileName && python $fileName"
     // "python": "cd $dir && pocha $fileName"

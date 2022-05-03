@@ -15,18 +15,23 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
-      "args": [],
+      "args": ["..\\little_c_in_C_test_programs\\test.c"],
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
+      "cwd": "D:\\programming\\frontend\\little_c\\little_c_in_C\\",
       "environment": [],
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "C:\\MinGW\\mingw32\\bin\\gdb.exe",
       "setupCommands": [{
-        "description": "Enable pretty-printing for gdb",
-        "text": "-enable-pretty-printing",
-        "ignoreFailures": true
-      }],
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Fix pretty-printing for gdb",
+          "text": "set charset UTF-8"
+        }
+      ],
       "preLaunchTask": "g++.exe build active file"
     },
     {
@@ -52,7 +57,7 @@
       "name": "C/C++ Runner: Debug Session",
       "type": "cppdbg",
       "request": "launch",
-      "args": [],
+      "args": ["..\\little_c_in_C_test_programs\\test.c"],
       "stopAtEntry": false,
       "cwd": "d:/programming/frontend/little_c",
       "environment": [],
