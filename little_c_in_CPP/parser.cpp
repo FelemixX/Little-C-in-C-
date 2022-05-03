@@ -138,9 +138,9 @@ struct intern_func_type
 	{"", 0} /* null terminate the list */
 };
 
-extern char token[80];	 /* string representation of token */
-extern char token_type;	 /* contains type of token */
-extern char current_tok; /* internal representation of token */
+extern char current_token[80]; /* string representation of current_token */
+extern char token_type;		   /* contains type of current_token */
+extern char current_tok;	   /* internal representation of current_token */
 
 extern int ret_value; /* function return value */
 
@@ -174,18 +174,18 @@ static void str_replace(char *line, const char *search, const char *replace);
 void eval_exp(int *value)
 {
 	get_next_token();
-	if (!*token)
+	if (!*current_token)
 	{
 		sntx_err(NO_EXP);
 		return;
 	}
-	if (*token == ';')
+	if (*current_token == ';')
 	{
 		*value = 0; /* empty expression */
 		return;
 	}
 	eval_exp0(value);
-	putback(); /* return last token read to input stream */
+	putback(); /* return last current_token read to input stream */
 }
 
 /* Process an assignment expression */
@@ -197,12 +197,12 @@ void eval_exp0(int *value)
 
 	if (token_type == IDENTIFIER)
 	{
-		if (is_var(token))
+		if (is_var(current_token))
 		{ /* if a var, see if assignment */
-			strcpy_s(temp, ID_LEN, token);
+			strcpy_s(temp, ID_LEN, current_token);
 			temp_tok = token_type;
 			get_next_token();
-			if (*token == '=')
+			if (*current_token == '=')
 			{ /* is an assignment */
 				get_next_token();
 				eval_exp0(value);		  /* get value to assign */
@@ -211,8 +211,8 @@ void eval_exp0(int *value)
 			}
 			else
 			{			   /* not an assignment */
-				putback(); /* restore original token */
-				strcpy_s(token, 80, temp);
+				putback(); /* restore original current_token */
+				strcpy_s(current_token, 80, temp);
 				token_type = temp_tok;
 			}
 		}
@@ -229,7 +229,7 @@ void eval_exp1(int *value)
 		LT, LE, GT, GE, EQ, NE, 0};
 
 	eval_exp2(value);
-	op = *token;
+	op = *current_token;
 	if (strchr(relops, op))
 	{
 		get_next_token();
@@ -265,7 +265,7 @@ void eval_exp2(int *value)
 	int partial_value;
 
 	eval_exp3(value);
-	while ((op = *token) == '+' || op == '-')
+	while ((op = *current_token) == '+' || op == '-')
 	{
 		get_next_token();
 		eval_exp3(&partial_value);
@@ -288,7 +288,7 @@ void eval_exp3(int *value)
 	int partial_value, t;
 
 	eval_exp4(value);
-	while ((op = *token) == '*' || op == '/' || op == '%')
+	while ((op = *current_token) == '*' || op == '/' || op == '%')
 	{
 		get_next_token();
 		eval_exp4(&partial_value);
@@ -316,9 +316,9 @@ void eval_exp4(int *value)
 	register char op;
 
 	op = '\0';
-	if (*token == '+' || *token == '-')
+	if (*current_token == '+' || *current_token == '-')
 	{
-		op = *token;
+		op = *current_token;
 		get_next_token();
 	}
 	eval_exp5(value);
@@ -330,11 +330,11 @@ void eval_exp4(int *value)
 /* Process parenthesized expression. */
 void eval_exp5(int *value)
 {
-	if (*token == '(')
+	if (*current_token == '(')
 	{
 		get_next_token();
 		eval_exp0(value); /* get subexpression */
-		if (*token != ')')
+		if (*current_token != ')')
 			sntx_err(PAREN_EXPECTED);
 		get_next_token();
 	}
@@ -350,26 +350,26 @@ void atom(int *value)
 	switch (token_type)
 	{
 	case IDENTIFIER:
-		i = internal_func(token);
+		i = internal_func(current_token);
 		if (i != -1)
 		{ /* call "standard library" function */
 			*value = (*intern_func[i].p)();
 		}
-		else if (find_func(token))
+		else if (find_func(current_token))
 		{ /* call user-defined function */
 			call();
 			*value = ret_value;
 		}
 		else
-			*value = find_var(token); /* get var's value */
+			*value = find_var(current_token); /* get var's value */
 		get_next_token();
 		return;
 	case NUMBER: /* is numeric constant */
-		*value = atoi(token);
+		*value = atoi(current_token);
 		get_next_token();
 		return;
 	case DELIMITER: /* see if character constant */
-		if (*token == '\'')
+		if (*current_token == '\'')
 		{
 			*value = *source_code_location;
 			source_code_location++;
@@ -379,7 +379,7 @@ void atom(int *value)
 			get_next_token();
 			return;
 		}
-		if (*token == ')')
+		if (*current_token == ')')
 			return; /* process empty expression */
 		else
 			sntx_err(SYNTAX); /* syntax error */
@@ -454,7 +454,7 @@ void sntx_err(int error)
 	longjmp(execution_buffer, 1); /* return to safe point */
 }
 
-/* Get a token. */
+/* Get a current_token. */
 char get_next_token(void)
 {
 
@@ -463,7 +463,7 @@ char get_next_token(void)
 	token_type = 0;
 	current_tok = 0;
 
-	temp_token = token;
+	temp_token = current_token;
 	*temp_token = '\0';
 
 	/* skip over white space */
@@ -495,7 +495,7 @@ char get_next_token(void)
 
 	if (*source_code_location == '\0')
 	{ /* end of file */
-		*token = '\0';
+		*current_token = '\0';
 		current_tok = FINISHED;
 		return (token_type = DELIMITER);
 	}
@@ -545,7 +545,7 @@ char get_next_token(void)
 	/* look for the end of file after a comment */
 	if (*source_code_location == '\0')
 	{ /* end of file */
-		*token = '\0';
+		*current_token = '\0';
 		current_tok = FINISHED;
 		return (token_type = DELIMITER);
 	}
@@ -614,7 +614,7 @@ char get_next_token(void)
 			*temp_token = '\0';
 			break;
 		}
-		if (*token)
+		if (*current_token)
 			return (token_type = DELIMITER);
 	}
 
@@ -636,16 +636,16 @@ char get_next_token(void)
 			sntx_err(SYNTAX);
 		source_code_location++;
 		*temp_token = '\0';
-		str_replace(token, "\\a", "\a");
-		str_replace(token, "\\b", "\b");
-		str_replace(token, "\\f", "\f");
-		str_replace(token, "\\n", "\n");
-		str_replace(token, "\\r", "\r");
-		str_replace(token, "\\t", "\t");
-		str_replace(token, "\\v", "\v");
-		str_replace(token, "\\\\", "\\");
-		str_replace(token, "\\\'", "\'");
-		str_replace(token, "\\\"", "\"");
+		str_replace(current_token, "\\a", "\a");
+		str_replace(current_token, "\\b", "\b");
+		str_replace(current_token, "\\f", "\f");
+		str_replace(current_token, "\\n", "\n");
+		str_replace(current_token, "\\r", "\r");
+		str_replace(current_token, "\\t", "\t");
+		str_replace(current_token, "\\v", "\v");
+		str_replace(current_token, "\\\\", "\\");
+		str_replace(current_token, "\\\'", "\'");
+		str_replace(current_token, "\\\"", "\"");
 		return (token_type = STRING);
 	}
 
@@ -669,7 +669,7 @@ char get_next_token(void)
 	/* see if a string is a command or a variable */
 	if (token_type == TEMP)
 	{
-		current_tok = look_up(token); /* convert to internal rep */
+		current_tok = look_up(current_token); /* convert to internal rep */
 		if (current_tok)
 			token_type = KEYWORD; /* is a keyword */
 		else
@@ -678,18 +678,18 @@ char get_next_token(void)
 	return token_type;
 }
 
-/* Return a token to input stream. */
+/* Return a current_token to input stream. */
 void putback(void)
 {
 	char *t;
 
-	t = token;
+	t = current_token;
 	for (; *t; t++)
 		source_code_location--;
 }
 
-/* Look up a token's internal representation in the
-   token table_with_statements.
+/* Look up a current_token's internal representation in the
+   current_token table_with_statements.
 */
 char look_up(char *s)
 {
@@ -704,7 +704,7 @@ char look_up(char *s)
 		p++;
 	}
 
-	/* see if token is in table_with_statements */
+	/* see if current_token is in table_with_statements */
 	for (i = 0; *table_with_statements[i].command; i++)
 	{
 		if (!strcmp(table_with_statements[i].command, s))
