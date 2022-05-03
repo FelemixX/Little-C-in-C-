@@ -27,7 +27,7 @@ enum tok_types
 	BLOCK
 };
 
-/* These are the constants used to call sntx_err() when
+/* These are the constants used to call syntax_error() when
    a syntax error occurs. Add more if you like.
    NOTE: SYNTAX is a generic error message used when
    nothing else seems appropriate.
@@ -55,8 +55,8 @@ enum error_msg
 };
 
 int get_next_token(void);
-void sntx_err(int error), eval_exp(int *result);
-void putback(void);
+void syntax_error(int error), eval_exp(int *result);
+void shift_source_code_location_back(void);
 
 /* Get a character from console. (Use getchar() if
    your compiler does not support       _getche().) */
@@ -91,19 +91,19 @@ int call_puts(void)
 {
 	get_next_token();
 	if (*current_token != '(')
-		sntx_err(PAREN_EXPECTED);
+		syntax_error(PAREN_EXPECTED);
 	get_next_token();
 	if (token_type != STRING)
-		sntx_err(QUOTE_EXPECTED);
+		syntax_error(QUOTE_EXPECTED);
 	puts(current_token);
 	get_next_token();
 	if (*current_token != ')')
-		sntx_err(PAREN_EXPECTED);
+		syntax_error(PAREN_EXPECTED);
 
 	get_next_token();
 	if (*current_token != ';')
-		sntx_err(SEMI_EXPECTED);
-	putback();
+		syntax_error(SEMI_EXPECTED);
+	shift_source_code_location_back();
 	return 0;
 }
 
@@ -114,7 +114,7 @@ int print(void)
 
 	get_next_token();
 	if (*current_token != '(')
-		sntx_err(PAREN_EXPECTED);
+		syntax_error(PAREN_EXPECTED);
 
 	get_next_token();
 	if (token_type == STRING)
@@ -123,7 +123,7 @@ int print(void)
 	}
 	else
 	{ /* output a number */
-		putback();
+		shift_source_code_location_back();
 		eval_exp(&i);
 		printf("%d ", i);
 	}
@@ -131,12 +131,12 @@ int print(void)
 	get_next_token();
 
 	if (*current_token != ')')
-		sntx_err(PAREN_EXPECTED);
+		syntax_error(PAREN_EXPECTED);
 
 	get_next_token();
 	if (*current_token != ';')
-		sntx_err(SEMI_EXPECTED);
-	putback();
+		syntax_error(SEMI_EXPECTED);
+	shift_source_code_location_back();
 	return 0;
 }
 

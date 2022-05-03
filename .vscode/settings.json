@@ -51,6 +51,7 @@
     "fstream": "cpp",
     "istream": "cpp",
     "ostream": "cpp",
-    "utility": "cpp"
+    "utility": "cpp",
+    "streambuf": "cpp"
   }
 }

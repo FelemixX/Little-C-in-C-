@@ -62,7 +62,7 @@ enum double_ops
 	NE
 };
 
-/* These are the constants used to call sntx_err() when
+/* These are the constants used to call syntax_error() when
    a syntax error occurs. Add more if you like.
    NOTE: SYNTAX is a generic error message used when
    nothing else seems appropriate.
@@ -153,14 +153,14 @@ void eval_exp4(int *value);
 void eval_exp5(int *value);
 void atom(int *value);
 #if defined(_MSC_VER) && _MSC_VER >= 1200
-__declspec(noreturn) void sntx_err(int error);
+__declspec(noreturn) void syntax_error(int error);
 #elif __GNUC__
-void sntx_err(int error) __attribute((noreturn));
+void syntax_error(int error) __attribute((noreturn));
 #else
-void sntx_err(int error);
+void syntax_error(int error);
 #endif
 
-void putback(void);
+void shift_source_code_location_back(void);
 void assign_var(char *var_name, int value);
 int isdelim(char c), is_whitespace(char c);
 int find_var(char *s);
@@ -176,7 +176,7 @@ void eval_exp(int *value)
 	get_next_token();
 	if (!*current_token)
 	{
-		sntx_err(NO_EXP);
+		syntax_error(NO_EXP);
 		return;
 	}
 	if (*current_token == ';')
@@ -185,7 +185,7 @@ void eval_exp(int *value)
 		return;
 	}
 	eval_exp0(value);
-	putback(); /* return last current_token read to input stream */
+	shift_source_code_location_back(); /* return last current_token read to input stream */
 }
 
 /* Process an assignment expression */
@@ -210,8 +210,8 @@ void eval_exp0(int *value)
 				return;
 			}
 			else
-			{			   /* not an assignment */
-				putback(); /* restore original current_token */
+			{									   /* not an assignment */
+				shift_source_code_location_back(); /* restore original current_token */
 				strcpy_s(current_token, 80, temp);
 				token_type = temp_tok;
 			}
@@ -299,7 +299,7 @@ void eval_exp3(int *value)
 			break;
 		case '/':
 			if (partial_value == 0)
-				sntx_err(DIV_BY_ZERO);
+				syntax_error(DIV_BY_ZERO);
 			*value = (*value) / partial_value;
 			break;
 		case '%':
@@ -335,7 +335,7 @@ void eval_exp5(int *value)
 		get_next_token();
 		eval_exp0(value); /* get subexpression */
 		if (*current_token != ')')
-			sntx_err(PAREN_EXPECTED);
+			syntax_error(PAREN_EXPECTED);
 		get_next_token();
 	}
 	else
@@ -374,7 +374,7 @@ void atom(int *value)
 			*value = *source_code_location;
 			source_code_location++;
 			if (*source_code_location != '\'')
-				sntx_err(QUOTE_EXPECTED);
+				syntax_error(QUOTE_EXPECTED);
 			source_code_location++;
 			get_next_token();
 			return;
@@ -382,14 +382,14 @@ void atom(int *value)
 		if (*current_token == ')')
 			return; /* process empty expression */
 		else
-			sntx_err(SYNTAX); /* syntax error */
+			syntax_error(SYNTAX); /* syntax error */
 	default:
-		sntx_err(SYNTAX); /* syntax error */
+		syntax_error(SYNTAX); /* syntax error */
 	}
 }
 
 /* Display an error message. */
-void sntx_err(int error)
+void syntax_error(int error)
 {
 	char *p, *temp;
 	int linecount = 0;
@@ -635,7 +635,7 @@ char get_next_token(void)
 		while ((*source_code_location != '"' && *source_code_location != '\r' && *source_code_location != '\n' && *source_code_location != '\0') || (*source_code_location == '"' && *(source_code_location - 1) == '\\'))
 			*temp_token++ = *source_code_location++;
 		if (*source_code_location == '\r' || *source_code_location == '\n' || *source_code_location == '\0')
-			sntx_err(SYNTAX);
+			syntax_error(SYNTAX);
 		source_code_location++;
 		*temp_token = '\0';
 		str_replace(current_token, "\\a", "\a");
@@ -681,7 +681,8 @@ char get_next_token(void)
 }
 
 /* Return a current_token to input stream. */
-void putback(void)
+// передвигаем указатель на текущую программу на *_токен_* обратно
+void shift_source_code_location_back(void)
 {
 	char *t;
 

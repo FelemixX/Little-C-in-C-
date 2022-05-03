@@ -65,7 +65,7 @@ enum double_ops
 	NE
 };
 
-/* These are the constants used to call sntx_err() when
+/* These are the constants used to call syntax_error() when
    a syntax error occurs. Add more if you like.
    NOTE: SYNTAX is a generic error message used when
    nothing else seems appropriate.
@@ -140,19 +140,19 @@ struct commands
 char current_token[80];
 char token_type, current_tok;
 
-int functos;	/* index to top of function call stack */
-int func_index; /* index into function table_with_statements */
-int gvar_index; /* индекс глобальной переменной в таблице global_vars */
-int lvartos;	/* index into local variable stack */
+int functos;				  /* index to top of function call stack */
+int func_index;				  /* index into function table_with_statements */
+int global_variable_position; /* индекс глобальной переменной в таблице global_vars */
+int lvartos;				  /* index into local variable stack */
 
 int ret_value;		 /* function return value */
 int ret_occurring;	 /* function return is occurring */
 int break_occurring; /* loop break is occurring */
 
 void print(void), pre_scan(void);
-void declare_global(void), call(void), putback(void);
+void declare_global(void), call(void), shift_source_code_location_back(void);
 void decl_local(void), local_push(struct var_type i);
-void eval_exp(int *value), sntx_err(int error);
+void eval_exp(int *value), syntax_error(int error);
 void exec_if(void), find_eob(void), exec_for(void);
 void get_params(void), get_args(void);
 void exec_while(void), func_push(int i), exec_do(void);
@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
 	if (setjmp(execution_buffer))
 		exit(1); /* инициализация буфера longjump */
 
-	gvar_index = 0; /* инициализация индекса глобальных переменных */
+	global_variable_position = 0; /* инициализация индекса глобальных переменных */
 
 	/* установка указателя на начало буфера программы  */
 	source_code_location = program_start_buffer;
@@ -235,11 +235,11 @@ void interp_block(void)
 		if (token_type == IDENTIFIER)
 		{
 			/* Not a keyword, so process expression. */
-			putback();		  /* restore current_token to input stream for
-								 further processing by eval_exp() */
-			eval_exp(&value); /* process the expression */
+			shift_source_code_location_back(); /* restore current_token to input stream for
+						  further processing by eval_exp() */
+			eval_exp(&value);				   /* process the expression */
 			if (*current_token != ';')
-				sntx_err(SEMI_EXPECTED);
+				syntax_error(SEMI_EXPECTED);
 		}
 		else if (token_type == BLOCK)
 		{							   /* if block delimiter */
@@ -253,7 +253,7 @@ void interp_block(void)
 			{
 			case CHAR:
 			case INT: /* declare local variables */
-				putback();
+				shift_source_code_location_back();
 				decl_local();
 				break;
 			case RETURN: /* return from function call */
@@ -381,7 +381,7 @@ void pre_scan(void) // Предварительный проход компил�
 					   фигурную скобку функции */
 				}
 				else
-					putback();
+					shift_source_code_location_back();
 			}
 		}
 		else if (*current_token == '{')
@@ -416,15 +416,15 @@ void declare_global(void)
 
 	do
 	{ /* обработка списка с разделителями запятыми */
-		global_vars[gvar_index].variable_type = variable_type;
-		global_vars[gvar_index].variable_value = 0; /* инициализируем нулем */
-		get_next_token();							/* определяем имя */
-		strcpy_s(global_vars[gvar_index].variable_name, ID_LEN, current_token);
+		global_vars[global_variable_position].variable_type = variable_type;
+		global_vars[global_variable_position].variable_value = 0; /* инициализируем нулем */
+		get_next_token();										  /* определяем имя */
+		strcpy_s(global_vars[global_variable_position].variable_name, ID_LEN, current_token);
 		get_next_token();
-		gvar_index++;
+		global_variable_position++;
 	} while (*current_token == ',');
 	if (*current_token != ';')
-		sntx_err(SEMI_EXPECTED);
+		syntax_error(SEMI_EXPECTED);
 }
 
 /* Declare a local variable. */
@@ -445,7 +445,7 @@ void decl_local(void)
 		get_next_token();
 	} while (*current_token == ',');
 	if (*current_token != ';')
-		sntx_err(SEMI_EXPECTED);
+		syntax_error(SEMI_EXPECTED);
 }
 
 /* Call a function. */
@@ -456,7 +456,7 @@ void call(void)
 
 	loc = find_func(current_token); /* find entry point of function */
 	if (loc == NULL)
-		sntx_err(FUNC_UNDEF); /* function not defined */
+		syntax_error(FUNC_UNDEF); /* function not defined */
 	else
 	{
 		lvartemp = lvartos;			 /* save local var stack index */
@@ -483,7 +483,7 @@ void get_args(void)
 	count = 0;
 	get_next_token();
 	if (*current_token != '(')
-		sntx_err(PAREN_EXPECTED);
+		syntax_error(PAREN_EXPECTED);
 
 	/* process a comma-separated list of values */
 	do
@@ -517,7 +517,7 @@ void get_params(void)
 		if (*current_token != ')')
 		{
 			if (current_tok != INT && current_tok != CHAR)
-				sntx_err(TYPE_EXPECTED);
+				syntax_error(TYPE_EXPECTED);
 
 			p->variable_type = token_type;
 			get_next_token();
@@ -532,7 +532,7 @@ void get_params(void)
 			break;
 	} while (*current_token == ',');
 	if (*current_token != ')')
-		sntx_err(PAREN_EXPECTED);
+		syntax_error(PAREN_EXPECTED);
 }
 
 /* Return from a function. */
@@ -552,7 +552,7 @@ void local_push(struct var_type i)
 {
 	if (lvartos >= NUM_LOCAL_VARS)
 	{
-		sntx_err(TOO_MANY_LVARS);
+		syntax_error(TOO_MANY_LVARS);
 	}
 	else
 	{
@@ -568,11 +568,11 @@ int func_pop(void)
 	functos--;
 	if (functos < 0)
 	{
-		sntx_err(RET_NOCALL);
+		syntax_error(RET_NOCALL);
 	}
 	else if (functos >= NUM_FUNC)
 	{
-		sntx_err(NEST_FUNC);
+		syntax_error(NEST_FUNC);
 	}
 	else
 	{
@@ -587,7 +587,7 @@ void func_push(int i)
 {
 	if (functos >= NUM_FUNC)
 	{
-		sntx_err(NEST_FUNC);
+		syntax_error(NEST_FUNC);
 	}
 	else
 	{
@@ -618,7 +618,7 @@ void assign_var(char *var_name, int value)
 				global_vars[i].variable_value = value;
 				return;
 			}
-	sntx_err(NOT_VAR); /* variable not found */
+	syntax_error(NOT_VAR); /* variable not found */
 }
 
 /* Find the value of a variable. */
@@ -636,7 +636,7 @@ int find_var(char *s)
 		if (!strcmp(global_vars[i].variable_name, s))
 			return global_vars[i].variable_value;
 
-	sntx_err(NOT_VAR); /* variable not found */
+	syntax_error(NOT_VAR); /* variable not found */
 	return -1;
 }
 
@@ -679,7 +679,7 @@ void exec_if(void)
 
 		if (current_tok != ELSE)
 		{
-			putback(); /* restore current_token if
+			shift_source_code_location_back(); /* restore current_token if
 						  no ELSE is present */
 			return;
 		}
@@ -694,7 +694,7 @@ void exec_while(void)
 	char *temp;
 
 	break_occurring = 0; /* clear the break flag */
-	putback();
+	shift_source_code_location_back();
 	temp = source_code_location; /* save location of top of while loop */
 	get_next_token();
 	eval_exp(&cond); /* check the conditional expression */
@@ -721,7 +721,7 @@ void exec_do(void)
 	int cond;
 	char *temp;
 
-	putback();
+	shift_source_code_location_back();
 	temp = source_code_location; /* save location of top of do loop */
 	break_occurring = 0;		 /* clear the break flag */
 
@@ -738,7 +738,7 @@ void exec_do(void)
 	}
 	get_next_token();
 	if (current_tok != WHILE)
-		sntx_err(WHILE_EXPECTED);
+		syntax_error(WHILE_EXPECTED);
 	eval_exp(&cond); /* check the loop condition */
 	if (cond)
 		source_code_location = temp; /* if true loop; otherwise,
@@ -773,14 +773,14 @@ void exec_for(void)
 	get_next_token();
 	eval_exp(&cond); /* initialization expression */
 	if (*current_token != ';')
-		sntx_err(SEMI_EXPECTED);
+		syntax_error(SEMI_EXPECTED);
 	source_code_location++; /* get past the ; */
 	temp = source_code_location;
 	for (;;)
 	{
 		eval_exp(&cond); /* check the condition */
 		if (*current_token != ';')
-			sntx_err(SEMI_EXPECTED);
+			syntax_error(SEMI_EXPECTED);
 		source_code_location++; /* get past the ; */
 		temp2 = source_code_location;
 
