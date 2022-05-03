@@ -31,5 +31,10 @@
     "cpp": "cd $dir && g++ -std=c++17 *.cpp -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
     "c": "cd $dir && gcc *.c -o $fileNameWithoutExt && $dir$fileNameWithoutExt ..\\little_c_in_C_test_programs\\test.c",
     "python": "cd $dir && python $fileName"
+  },
+  "files.associations": {
+    "*.hbs": "handlebars",
+    "*.html": "html",
+    "setjmp.h": "c"
   }
 }

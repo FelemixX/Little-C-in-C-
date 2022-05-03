@@ -164,8 +164,6 @@ char *find_func(char *name), get_token(void);
 
 int main(int argc, char *argv[])
 {
-	char *test_char = "qweqweqwea";
-	test_char;
 	if (argc != 2)
 	{
 		printf("Usage: littlec <filename>\n");
