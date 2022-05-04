@@ -55,7 +55,7 @@ enum error_msg
 };
 
 int get_next_token(void);
-void syntax_error(int error), eval_exp(int *result);
+void syntax_error(int error), eval_expression(int *result);
 void shift_source_code_location_back(void);
 
 /* Get a character from console. (Use getchar() if
@@ -81,7 +81,7 @@ int call_putch(void)
 {
 	int value;
 
-	eval_exp(&value);
+	eval_expression(&value);
 	printf("%c", value);
 	return value;
 }
@@ -124,7 +124,7 @@ int print(void)
 	else
 	{ /* output a number */
 		shift_source_code_location_back();
-		eval_exp(&i);
+		eval_expression(&i);
 		printf("%d ", i);
 	}
 

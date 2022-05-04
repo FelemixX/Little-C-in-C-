@@ -144,8 +144,8 @@ extern char current_tok_datatype; /* internal representation of current_token */
 
 extern int ret_value; /* function return value */
 
-void eval_exp0(int *value);
-void eval_exp(int *value);
+void eval_assignment_expression(int *value);
+void eval_expression(int *value);
 void eval_exp1(int *value);
 void eval_exp2(int *value);
 void eval_exp3(int *value);
@@ -165,13 +165,13 @@ void assign_var(char *var_name, int value);
 int is_delimiter(char c), is_whitespace(char c);
 int find_var(char *s);
 int internal_func(char *s);
-int is_var(char *s);
+int is_variable(char *s);
 char *find_function_in_function_table(char *name), look_up_token_in_table(char *s), get_next_token(void);
 void call_function(void);
 static void str_replace(char *line, const char *search, const char *replace);
 
 /* Entry point into parser. */
-void eval_exp(int *value)
+void eval_expression(int *value)
 {
     get_next_token();
     if (!*current_token)
@@ -184,12 +184,12 @@ void eval_exp(int *value)
         *value = 0; /* empty expression */
         return;
     }
-    eval_exp0(value);
+    eval_assignment_expression(value);
     shift_source_code_location_back(); /* return last current_token read to input stream */
 }
 
 /* Process an assignment expression */
-void eval_exp0(int *value)
+void eval_assignment_expression(int *value)
 {
     char temp[ID_LEN]; /* holds name of var receiving
                           the assignment */
@@ -197,7 +197,7 @@ void eval_exp0(int *value)
 
     if (token_type == VARIABLE)
     {
-        if (is_var(current_token))
+        if (is_variable(current_token))
         { /* if a var, see if assignment */
             strcpy_s(temp, ID_LEN, current_token);
             temp_tok = token_type;
@@ -205,8 +205,8 @@ void eval_exp0(int *value)
             if (*current_token == '=')
             { /* is an assignment */
                 get_next_token();
-                eval_exp0(value);         /* get value to assign */
-                assign_var(temp, *value); /* assign the value */
+                eval_assignment_expression(value); /* get value to assign */
+                assign_var(temp, *value);          /* assign the value */
                 return;
             }
             else
@@ -333,7 +333,7 @@ void eval_exp5(int *value)
     if (*current_token == '(')
     {
         get_next_token();
-        eval_exp0(value); /* get subexpression */
+        eval_assignment_expression(value); /* get subexpression */
         if (*current_token != ')')
             syntax_error(PAREN_EXPECTED);
         get_next_token();

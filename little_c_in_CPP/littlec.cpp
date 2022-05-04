@@ -152,15 +152,15 @@ int break_occurring; /* loop break is occurring */
 
 void print(void), prescan_source_code(void);
 void declare_global_variables(void), call_function(void), shift_source_code_location_back(void);
-void decl_local(void), local_push(struct variable_type i);
-void eval_exp(int *value), syntax_error(int error);
-void exec_if(void), find_eob(void), exec_for(void);
+void declare_local_variables(void), local_push(struct variable_type i);
+void eval_expression(int *value), syntax_error(int error);
+void execute_if_statement(void), find_eob(void), exec_for(void);
 void get_function_parameters(void), get_function_arguments(void);
 void exec_while(void), function_push_variables_on_call_stack(int i), exec_do(void);
 void assign_var(char *var_name, int value);
 int load_program(char *p, char *fname), find_var(char *s);
-void interp_block(void), func_ret(void);
-int func_pop(void), is_var(char *s);
+void interpret_block(void), function_return(void);
+int func_pop(void), is_variable(char *s);
 char *find_function_in_function_table(char *name), get_next_token(void);
 
 int main(int argc, char *argv[])
@@ -216,10 +216,10 @@ int main(int argc, char *argv[])
 }
 
 /* Interpret a single statement or block of code. When
-   interp_block() returns from its initial call, the final
+   interpret_block() returns from its initial call, the final
    brace (or a return) in main() has been encountered.
 */
-void interp_block(void)
+void interpret_block(void)
 {
 	int value;
 	char block = 0;
@@ -238,7 +238,7 @@ void interp_block(void)
 			/* Not a keyword, so process expression. */
 			shift_source_code_location_back(); /* restore current_token to input stream for
 						  further processing by eval_exp() */
-			eval_exp(&value);				   /* process the expression */
+			eval_expression(&value);		   /* process the expression */
 			if (*current_token != ';')
 				syntax_error(SEMICOLON_EXPECTED);
 		}
@@ -255,10 +255,10 @@ void interp_block(void)
 			case CHAR:
 			case INT: /* declare local variables */
 				shift_source_code_location_back();
-				decl_local();
+				declare_local_variables();
 				break;
 			case RETURN: /* return from function call */
-				func_ret();
+				function_return();
 				ret_occurring = 1;
 				return;
 			case CONTINUE: /* continue loop execution */
@@ -267,7 +267,7 @@ void interp_block(void)
 				break_occurring = 1;
 				return;
 			case IF: /* process an if statement */
-				exec_if();
+				execute_if_statement();
 				if (ret_occurring > 0 || break_occurring > 0)
 				{
 					return;
@@ -429,7 +429,7 @@ void declare_global_variables(void)
 }
 
 /* Declare a local variable. */
-void decl_local(void)
+void declare_local_variables(void)
 {
 	struct variable_type i;
 
@@ -467,7 +467,7 @@ void call_function(void)
 		source_code_location = function_location;		  /* reset prog to start of function */
 		ret_occurring = 0;								  /* P the return occurring variable */
 		get_function_parameters();						  /* load the function's parameters with the values of the arguments */
-		interp_block();									  /* interpret the function */
+		interpret_block();								  /* interpret the function */
 		ret_occurring = 0;								  /* Clear the return occurring variable */
 		source_code_location = temp_source_code_location; /* reset the program initial_source_code_location */
 		lvartos = func_pop();							  /* reset the local var stack */
@@ -489,7 +489,7 @@ void get_function_arguments(void)
 	/* process a comma-separated list of values */
 	do
 	{
-		eval_exp(&value);
+		eval_expression(&value);
 		temp[count] = value; /* save temporarily */
 		get_next_token();
 		count++;
@@ -537,13 +537,13 @@ void get_function_parameters(void)
 }
 
 /* Return from a function. */
-void func_ret(void)
+void function_return(void)
 {
 	int value;
 
 	value = 0;
 	/* get return value, if any */
-	eval_exp(&value);
+	eval_expression(&value);
 
 	ret_value = value;
 }
@@ -645,7 +645,7 @@ int find_var(char *s)
 /* Determine if an identifier is a variable. Return
    1 if variable is found; 0 otherwise.
 */
-int is_var(char *s)
+int is_variable(char *s)
 {
 	register int i;
 
@@ -663,15 +663,15 @@ int is_var(char *s)
 }
 
 /* Execute an if statement. */
-void exec_if(void)
+void execute_if_statement(void)
 {
-	int cond;
+	int condition;
 
-	eval_exp(&cond); /* get if expression */
+	eval_expression(&condition); /* get if expression */
 
-	if (cond)
+	if (condition)
 	{ /* is true so process target of IF */
-		interp_block();
+		interpret_block();
 	}
 	else
 	{				/* otherwise skip around IF block and
@@ -685,7 +685,7 @@ void exec_if(void)
 						  no ELSE is present */
 			return;
 		}
-		interp_block();
+		interpret_block();
 	}
 }
 
@@ -699,10 +699,10 @@ void exec_while(void)
 	shift_source_code_location_back();
 	temp = source_code_location; /* save location of top of while loop */
 	get_next_token();
-	eval_exp(&cond); /* check the conditional expression */
+	eval_expression(&cond); /* check the conditional expression */
 	if (cond)
 	{
-		interp_block(); /* if true, interpret */
+		interpret_block(); /* if true, interpret */
 		if (break_occurring > 0)
 		{
 			break_occurring = 0;
@@ -727,8 +727,8 @@ void exec_do(void)
 	temp = source_code_location; /* save location of top of do loop */
 	break_occurring = 0;		 /* clear the break flag */
 
-	get_next_token(); /* get start of loop */
-	interp_block();	  /* interpret loop */
+	get_next_token();  /* get start of loop */
+	interpret_block(); /* interpret loop */
 	if (ret_occurring > 0)
 	{
 		return;
@@ -741,7 +741,7 @@ void exec_do(void)
 	get_next_token();
 	if (current_tok_datatype != WHILE)
 		syntax_error(WHILE_EXPECTED);
-	eval_exp(&cond); /* check the loop condition */
+	eval_expression(&cond); /* check the loop condition */
 	if (cond)
 		source_code_location = temp; /* if true loop; otherwise,
 					   continue on */
@@ -773,14 +773,14 @@ void exec_for(void)
 
 	break_occurring = 0; /* clear the break flag */
 	get_next_token();
-	eval_exp(&cond); /* initialization expression */
+	eval_expression(&cond); /* initialization expression */
 	if (*current_token != ';')
 		syntax_error(SEMICOLON_EXPECTED);
 	source_code_location++; /* get past the ; */
 	temp = source_code_location;
 	for (;;)
 	{
-		eval_exp(&cond); /* check the condition */
+		eval_expression(&cond); /* check the condition */
 		if (*current_token != ';')
 			syntax_error(SEMICOLON_EXPECTED);
 		source_code_location++; /* get past the ; */
@@ -799,7 +799,7 @@ void exec_for(void)
 
 		if (cond)
 		{
-			interp_block(); /* if true, interpret */
+			interpret_block(); /* if true, interpret */
 			if (ret_occurring > 0)
 			{
 				return;
@@ -816,7 +816,7 @@ void exec_for(void)
 			return;
 		}
 		source_code_location = temp2;
-		eval_exp(&cond);			 /* do the increment */
+		eval_expression(&cond);		 /* do the increment */
 		source_code_location = temp; /* loop back to top */
 	}
 }
