@@ -26,7 +26,8 @@
 enum token_types
 {
 	DELIMITER,
-	IDENTIFIER,
+	// может быть именем переменной, функции или константы
+	VARIABLE,
 	NUMBER,
 	KEYWORD,
 	TEMP,
@@ -78,7 +79,7 @@ enum error_msg
 	EQUALS_EXPECTED,
 	NOT_VAR,
 	PARAM_ERR,
-	SEMI_EXPECTED,
+	SEMICOLON_EXPECTED,
 	UNBAL_BRACES,
 	FUNC_UNDEF,
 	TYPE_EXPECTED,
@@ -232,14 +233,14 @@ void interp_block(void)
 		*/
 
 		/* see what kind of current_token is up */
-		if (token_type == IDENTIFIER)
+		if (token_type == VARIABLE)
 		{
 			/* Not a keyword, so process expression. */
 			shift_source_code_location_back(); /* restore current_token to input stream for
 						  further processing by eval_exp() */
 			eval_exp(&value);				   /* process the expression */
 			if (*current_token != ';')
-				syntax_error(SEMI_EXPECTED);
+				syntax_error(SEMICOLON_EXPECTED);
 		}
 		else if (token_type == BLOCK)
 		{							   /* if block delimiter */
@@ -356,9 +357,9 @@ void prescan_source_code(void) // Предварительный проход к
 		/* тип глобальной переменной или возвращаемого значения функции */
 		if (current_tok_datatype == CHAR || current_tok_datatype == INT)
 		{
-			datatype = current_tok_datatype; /* сохранить тип данных */
+			datatype = current_tok_datatype; /* сохраняем тип данных */
 			get_next_token();
-			if (token_type == IDENTIFIER)
+			if (token_type == VARIABLE)
 			{
 				//
 				strcpy_s(temp_token, ID_LEN + 1, current_token);
@@ -424,7 +425,7 @@ void declare_global_variables(void)
 		global_variable_position++;
 	} while (*current_token == ',');
 	if (*current_token != ';')
-		syntax_error(SEMI_EXPECTED);
+		syntax_error(SEMICOLON_EXPECTED);
 }
 
 /* Declare a local variable. */
@@ -445,7 +446,7 @@ void decl_local(void)
 		get_next_token();
 	} while (*current_token == ',');
 	if (*current_token != ';')
-		syntax_error(SEMI_EXPECTED);
+		syntax_error(SEMICOLON_EXPECTED);
 }
 
 /* Call a function. */
@@ -773,14 +774,14 @@ void exec_for(void)
 	get_next_token();
 	eval_exp(&cond); /* initialization expression */
 	if (*current_token != ';')
-		syntax_error(SEMI_EXPECTED);
+		syntax_error(SEMICOLON_EXPECTED);
 	source_code_location++; /* get past the ; */
 	temp = source_code_location;
 	for (;;)
 	{
 		eval_exp(&cond); /* check the condition */
 		if (*current_token != ';')
-			syntax_error(SEMI_EXPECTED);
+			syntax_error(SEMICOLON_EXPECTED);
 		source_code_location++; /* get past the ; */
 		temp2 = source_code_location;
 

@@ -25,7 +25,7 @@
 enum token_types //константы к которым обращаемся при нахождении нужных совпадений в коде / для хранения данных в буфере
 {
     DELIMITER,
-    IDENTIFIER,
+    VARIABLE,
     NUMBER,
     KEYWORD,
     TEMP,
@@ -75,7 +75,7 @@ enum error_msg //коды ошибок
     EQUALS_EXPECTED,
     NOT_VAR,
     PARAM_ERR,
-    SEMI_EXPECTED,
+    SEMICOLON_EXPECTED,
     UNBAL_BRACES,
     FUNC_UNDEF,
     TYPE_EXPECTED,
@@ -195,7 +195,7 @@ void eval_exp0(int *value)
                           the assignment */
     register char temp_tok;
 
-    if (token_type == IDENTIFIER)
+    if (token_type == VARIABLE)
     {
         if (is_var(current_token))
         { /* if a var, see if assignment */
@@ -349,7 +349,7 @@ void atom(int *value)
 
     switch (token_type)
     {
-    case IDENTIFIER:
+    case VARIABLE:
         i = internal_func(current_token);
         if (i != -1)
         { /* call "standard library" function */
@@ -695,7 +695,7 @@ char get_next_token(void)
         if (current_tok_datatype)
             token_type = KEYWORD; /* is a keyword */
         else
-            token_type = IDENTIFIER;
+            token_type = VARIABLE;
     }
     return token_type;
 }

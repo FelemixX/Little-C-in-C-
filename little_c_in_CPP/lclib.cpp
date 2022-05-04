@@ -19,7 +19,7 @@ extern char current_tok_datatype;  /* holds the internal representation of curre
 enum token_types
 {
 	DELIMITER,
-	IDENTIFIER,
+	VARIABLE,
 	NUMBER,
 	KEYWORD,
 	TEMP,
@@ -40,7 +40,7 @@ enum error_msg
 	EQUALS_EXPECTED,
 	NOT_VAR,
 	PARAM_ERR,
-	SEMI_EXPECTED,
+	SEMICOLON_EXPECTED,
 	UNBAL_BRACES,
 	FUNC_UNDEF,
 	TYPE_EXPECTED,
@@ -102,7 +102,7 @@ int call_puts(void)
 
 	get_next_token();
 	if (*current_token != ';')
-		syntax_error(SEMI_EXPECTED);
+		syntax_error(SEMICOLON_EXPECTED);
 	shift_source_code_location_back();
 	return 0;
 }
@@ -135,7 +135,7 @@ int print(void)
 
 	get_next_token();
 	if (*current_token != ';')
-		syntax_error(SEMI_EXPECTED);
+		syntax_error(SEMICOLON_EXPECTED);
 	shift_source_code_location_back();
 	return 0;
 }
