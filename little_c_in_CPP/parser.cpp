@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#define NUM_FUNC 100
+#define NUMBER_FUNCTIONS 100
 #define NUM_GLOBAL_VARS 100
 #define NUM_LOCAL_VARS 200
 #define ID_LEN 32
@@ -77,9 +77,9 @@ enum error_msg //коды ошибок
     PARAM_ERR,
     SEMICOLON_EXPECTED,
     UNBAL_BRACES,
-    FUNC_UNDEF,
+    FUNC_UNDEFINED,
     TYPE_EXPECTED,
-    NEST_FUNC,
+    NESTED_FUNCTIONS,
     RET_NOCALL,
     PAREN_EXPECTED,
     WHILE_EXPECTED,
@@ -109,7 +109,7 @@ extern struct function_type
     char func_name[ID_LEN];
     int ret_type;
     char *loc; /* location of function entry point in file */
-} func_stack[NUM_FUNC];
+} func_stack[NUMBER_FUNCTIONS];
 
 /* Keyword table_with_statements */
 extern struct commands
@@ -167,7 +167,7 @@ int find_var(char *s);
 int internal_func(char *s);
 int is_var(char *s);
 char *find_function_in_function_table(char *name), look_up_token_in_table(char *s), get_next_token(void);
-void call(void);
+void call_function(void);
 static void str_replace(char *line, const char *search, const char *replace);
 
 /* Entry point into parser. */
@@ -357,7 +357,7 @@ void atom(int *value)
         }
         else if (find_function_in_function_table(current_token))
         { /* call user-defined function */
-            call();
+            call_function();
             *value = ret_value;
         }
         else
@@ -388,14 +388,14 @@ void atom(int *value)
     }
 }
 
-/* Display an error message. */
-void syntax_error(int error)
+/* Display an error_type message. */
+void syntax_error(int error_type)
 {
-    char *p, *temp;
-    int linecount = 0;
+    char *program_pointer_location, *temp;
+    int line_count = 0;
     register int i;
 
-    static char *e[] = {
+    static char *errors_human_readable[] = {
         "syntax error",
         "unbalanced parentheses",
         "no expression present",
@@ -414,42 +414,44 @@ void syntax_error(int error)
         "not a string",
         "too many local variables",
         "division by zero"};
-    printf("\n%s", e[error]);
-    p = program_start_buffer;
-    while (p != source_code_location && *p != '\0')
-    { /* find line number of error */
-        p++;
-        if (*p == '\r')
+    printf("\n%s", errors_human_readable[error_type]);
+
+    program_pointer_location = program_start_buffer;
+
+    while (program_pointer_location != source_code_location && *program_pointer_location != '\0')
+    { /* find line number of error_type */
+        program_pointer_location++;
+        if (*program_pointer_location == '\r')
         {
-            linecount++;
-            if (p == source_code_location)
+            line_count++;
+            if (program_pointer_location == source_code_location)
             {
                 break;
             }
             /* See if this is a Windows or Mac newline */
-            p++;
+            program_pointer_location++;
             /* If we are a mac, backtrack */
-            if (*p != '\n')
+            if (*program_pointer_location != '\n')
             {
-                p--;
+                program_pointer_location--;
             }
         }
-        else if (*p == '\n')
+        else if (*program_pointer_location == '\n')
         {
-            linecount++;
+            line_count++;
         }
-        else if (*p == '\0')
+        else if (*program_pointer_location == '\0')
         {
-            linecount++;
+            line_count++;
         }
     }
-    printf(" in line %d\n", linecount);
+    printf(" in line %d\n", line_count);
 
-    temp = p--;
-    for (i = 0; i < 20 && p > program_start_buffer && *p != '\n' && *p != '\r'; i++, p--)
+    temp = program_pointer_location--;
+    for (i = 0; i < 20 && program_pointer_location > program_start_buffer && *program_pointer_location != '\n' && *program_pointer_location != '\r'; i++, program_pointer_location--)
         ;
-    for (i = 0; i < 30 && p <= temp; i++, p++)
-        printf("%c", *p);
+    for (i = 0; i < 30 && program_pointer_location <= temp; i++, program_pointer_location++)
+        printf("%c", *program_pointer_location);
 
     longjmp(execution_buffer, 1); /* return to safe point */
 }

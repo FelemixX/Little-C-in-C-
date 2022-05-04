@@ -52,6 +52,8 @@
     "istream": "cpp",
     "ostream": "cpp",
     "utility": "cpp",
-    "streambuf": "cpp"
+    "streambuf": "cpp",
+    "exception": "cpp",
+    "initializer_list": "cpp"
   }
 }

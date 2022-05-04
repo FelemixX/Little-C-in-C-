@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NUM_FUNC 100
+#define NUMBER_FUNCTIONS 100
 #define NUM_GLOBAL_VARS 100
 #define NUM_LOCAL_VARS 200
 #define NUM_BLOCK 100
@@ -81,9 +81,9 @@ enum error_msg
 	PARAM_ERR,
 	SEMICOLON_EXPECTED,
 	UNBAL_BRACES,
-	FUNC_UNDEF,
+	FUNC_UNDEFINED,
 	TYPE_EXPECTED,
-	NEST_FUNC,
+	NESTED_FUNCTIONS,
 	RET_NOCALL,
 	PAREN_EXPECTED,
 	WHILE_EXPECTED,
@@ -114,9 +114,9 @@ struct function_type
 	char func_name[ID_LEN];
 	int ret_type;
 	char *loc; /* location of entry point in file */
-} function_table[NUM_FUNC];
+} function_table[NUMBER_FUNCTIONS];
 
-int call_stack[NUM_FUNC];
+int call_stack[NUMBER_FUNCTIONS];
 
 struct commands
 { /* keyword lookup table_with_statements */
@@ -141,22 +141,22 @@ struct commands
 char current_token[80];
 char token_type, current_tok_datatype;
 
-int functos;				  /* index to top of function call stack */
-int function_position;		  /* index into function table_with_statements */
-int global_variable_position; /* индекс глобальной переменной в таблице global_vars */
-int lvartos;				  /* index into local variable stack */
+int function_last_index_on_call_stack; /* index to top of function call stack */
+int function_position;				   /* index into function table_with_statements */
+int global_variable_position;		   /* индекс глобальной переменной в таблице global_vars */
+int lvartos;						   /* index into local variable stack */
 
 int ret_value;		 /* function return value */
 int ret_occurring;	 /* function return is occurring */
 int break_occurring; /* loop break is occurring */
 
 void print(void), prescan_source_code(void);
-void declare_global_variables(void), call(void), shift_source_code_location_back(void);
+void declare_global_variables(void), call_function(void), shift_source_code_location_back(void);
 void decl_local(void), local_push(struct variable_type i);
 void eval_exp(int *value), syntax_error(int error);
 void exec_if(void), find_eob(void), exec_for(void);
-void get_params(void), get_args(void);
-void exec_while(void), func_push(int i), exec_do(void);
+void get_function_parameters(void), get_function_arguments(void);
+void exec_while(void), function_push_variables_on_call_stack(int i), exec_do(void);
 void assign_var(char *var_name, int value);
 int load_program(char *p, char *fname), find_var(char *s);
 void interp_block(void), func_ret(void);
@@ -194,9 +194,9 @@ int main(int argc, char *argv[])
 				  и глобальных переменных
 				  короче говоря, предварительный проход компилятора */
 
-	lvartos = 0;		 /* инициализация индекса стека локальных переменных */
-	functos = 0;		 /* инициализация индекса стека вызова CALL */
-	break_occurring = 0; /* initialize the break occurring flag */
+	lvartos = 0;						   /* инициализация индекса стека локальных переменных */
+	function_last_index_on_call_stack = 0; /* инициализация индекса стека вызова CALL */
+	break_occurring = 0;				   /* initialize the break occurring flag */
 
 	/* вызываем функцию main
 	 * она всегда вызывается первой*/
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
 
 	source_code_location--; /* возвращаемся к открывающей ( */
 	strcpy_s(current_token, 80, "main");
-	call(); /* вызываем main и интерпретируем */
+	call_function(); /* вызываем main и интерпретируем */
 
 	return 0;
 }
@@ -450,33 +450,33 @@ void decl_local(void)
 }
 
 /* Call a function. */
-void call(void)
+void call_function(void)
 {
-	char *loc, *temp;
+	char *function_location, *temp_source_code_location;
 	int lvartemp;
 
-	loc = find_function_in_function_table(current_token); /* find entry point of function */
-	if (loc == NULL)
-		syntax_error(FUNC_UNDEF); /* function not defined */
+	function_location = find_function_in_function_table(current_token); /* find entry point of function */
+	if (function_location == NULL)
+		syntax_error(FUNC_UNDEFINED); /* function not defined */
 	else
 	{
-		lvartemp = lvartos;			 /* save local var stack index */
-		get_args();					 /* get function arguments */
-		temp = source_code_location; /* save return location */
-		func_push(lvartemp);		 /* save local var stack index */
-		source_code_location = loc;	 /* reset prog to start of function */
-		ret_occurring = 0;			 /* P the return occurring variable */
-		get_params();				 /* load the function's parameters with the values of the arguments */
-		interp_block();				 /* interpret the function */
-		ret_occurring = 0;			 /* Clear the return occurring variable */
-		source_code_location = temp; /* reset the program initial_source_code_location */
-		lvartos = func_pop();		 /* reset the local var stack */
+		lvartemp = lvartos;								  /* save local var stack index */
+		get_function_arguments();						  /* get function arguments */
+		temp_source_code_location = source_code_location; /* save return location */
+		function_push_variables_on_call_stack(lvartemp);  /* save local var stack index */
+		source_code_location = function_location;		  /* reset prog to start of function */
+		ret_occurring = 0;								  /* P the return occurring variable */
+		get_function_parameters();						  /* load the function's parameters with the values of the arguments */
+		interp_block();									  /* interpret the function */
+		ret_occurring = 0;								  /* Clear the return occurring variable */
+		source_code_location = temp_source_code_location; /* reset the program initial_source_code_location */
+		lvartos = func_pop();							  /* reset the local var stack */
 	}
 }
 
 /* Push the arguments to a function onto the local
    variable stack. */
-void get_args(void)
+void get_function_arguments(void)
 {
 	int value, count, temp[NUM_PARAMS];
 	struct variable_type i;
@@ -505,29 +505,29 @@ void get_args(void)
 }
 
 /* Get function parameters. */
-void get_params(void)
+void get_function_parameters(void)
 {
-	struct variable_type *p;
-	int i;
+	struct variable_type *variable_type_pointer;
+	int position;
 
-	i = lvartos - 1;
+	position = lvartos - 1;
 	do
 	{ /* process comma-separated list of parameters */
 		get_next_token();
-		p = &local_var_stack[i];
+		variable_type_pointer = &local_var_stack[position];
 		if (*current_token != ')')
 		{
 			if (current_tok_datatype != INT && current_tok_datatype != CHAR)
 				syntax_error(TYPE_EXPECTED);
 
-			p->variable_type = token_type;
+			variable_type_pointer->variable_type = token_type;
 			get_next_token();
 
 			/* link parameter name with argument already on
 			   local var stack */
-			strcpy_s(p->variable_name, ID_LEN, current_token);
+			strcpy_s(variable_type_pointer->variable_name, ID_LEN, current_token);
 			get_next_token();
-			i--;
+			position--;
 		}
 		else
 			break;
@@ -566,34 +566,35 @@ void local_push(struct variable_type i)
 int func_pop(void)
 {
 	int index = 0;
-	functos--;
-	if (functos < 0)
+	function_last_index_on_call_stack--;
+	if (function_last_index_on_call_stack < 0)
 	{
 		syntax_error(RET_NOCALL);
 	}
-	else if (functos >= NUM_FUNC)
+	else if (function_last_index_on_call_stack >= NUMBER_FUNCTIONS)
 	{
-		syntax_error(NEST_FUNC);
+		syntax_error(NESTED_FUNCTIONS);
 	}
 	else
 	{
-		index = call_stack[functos];
+		index = call_stack[function_last_index_on_call_stack];
 	}
 
 	return index;
 }
 
 /* Push index of local variable stack. */
-void func_push(int i)
+// добавляет локальные переменные функции в стек
+void function_push_variables_on_call_stack(int i)
 {
-	if (functos >= NUM_FUNC)
+	if (function_last_index_on_call_stack >= NUMBER_FUNCTIONS)
 	{
-		syntax_error(NEST_FUNC);
+		syntax_error(NESTED_FUNCTIONS);
 	}
 	else
 	{
-		call_stack[functos] = i;
-		functos++;
+		call_stack[function_last_index_on_call_stack] = i;
+		function_last_index_on_call_stack++;
 	}
 }
 
@@ -603,7 +604,7 @@ void assign_var(char *var_name, int value)
 	register int i;
 
 	/* first, see if it's a local variable */
-	for (i = lvartos - 1; i >= call_stack[functos - 1]; i--)
+	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 	{
 		if (!strcmp(local_var_stack[i].variable_name, var_name))
 		{
@@ -611,7 +612,7 @@ void assign_var(char *var_name, int value)
 			return;
 		}
 	}
-	if (i < call_stack[functos - 1])
+	if (i < call_stack[function_last_index_on_call_stack - 1])
 		/* if not local, try global var table_with_statements */
 		for (i = 0; i < NUM_GLOBAL_VARS; i++)
 			if (!strcmp(global_vars[i].variable_name, var_name))
@@ -628,7 +629,7 @@ int find_var(char *s)
 	register int i;
 
 	/* first, see if it's a local variable */
-	for (i = lvartos - 1; i >= call_stack[functos - 1]; i--)
+	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 		if (!strcmp(local_var_stack[i].variable_name, current_token))
 			return local_var_stack[i].variable_value;
 
@@ -649,7 +650,7 @@ int is_var(char *s)
 	register int i;
 
 	/* first, see if it's a local variable */
-	for (i = lvartos - 1; i >= call_stack[functos - 1]; i--)
+	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 		if (!strcmp(local_var_stack[i].variable_name, current_token))
 			return 1;
 
