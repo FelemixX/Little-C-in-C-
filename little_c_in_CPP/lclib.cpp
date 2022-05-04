@@ -14,7 +14,7 @@
 extern char *source_code_location; /* points to current location in program */
 extern char current_token[80];	   /* holds string representation of current_token */
 extern char token_type;			   /* contains type of current_token */
-extern char current_tok;		   /* holds the internal representation of current_token */
+extern char current_tok_datatype;  /* holds the internal representation of current_token */
 
 enum token_types
 {

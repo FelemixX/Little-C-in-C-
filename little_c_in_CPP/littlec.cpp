@@ -57,12 +57,12 @@ enum tokens
 /* add additional double operators here (such as ->) */
 enum double_ops
 {
-	LT = 1,
-	LE,
-	GT,
-	GE,
-	EQ,
-	NE
+	LOWER = 1,
+	LOWER_OR_EQUAL,
+	GREATER,
+	GREATER_OR_EQUAL,
+	EQUAL,
+	NOT_EQUAL
 };
 
 /* These are the constants used to call syntax_error() when
@@ -138,7 +138,7 @@ struct commands
 };
 
 char current_token[80];
-char token_type, current_tok;
+char token_type, current_tok_datatype;
 
 int functos;				  /* index to top of function call stack */
 int function_position;		  /* index into function table_with_statements */
@@ -249,7 +249,7 @@ void interp_block(void)
 				return; /* is a }, so return */
 		}
 		else /* is keyword */
-			switch (current_tok)
+			switch (current_tok_datatype)
 			{
 			case CHAR:
 			case INT: /* declare local variables */
@@ -299,7 +299,7 @@ void interp_block(void)
 			case END:
 				exit(0);
 			}
-	} while (current_tok != FINISHED && block);
+	} while (current_tok_datatype != FINISHED && block);
 }
 
 /* Загрузить программу */
@@ -354,9 +354,9 @@ void prescan_source_code(void) // Предварительный проход к
 		temp_source_code_location = source_code_location; /* запоминаем текущую позицию */
 		get_next_token();
 		/* тип глобальной переменной или возвращаемого значения функции */
-		if (current_tok == CHAR || current_tok == INT)
+		if (current_tok_datatype == CHAR || current_tok_datatype == INT)
 		{
-			datatype = current_tok; /* сохранить тип данных */
+			datatype = current_tok_datatype; /* сохранить тип данных */
 			get_next_token();
 			if (token_type == IDENTIFIER)
 			{
@@ -386,7 +386,7 @@ void prescan_source_code(void) // Предварительный проход к
 		}
 		else if (*current_token == '{')
 			is_brace_open++;
-	} while (current_tok != FINISHED);
+	} while (current_tok_datatype != FINISHED);
 	source_code_location = initial_source_code_location;
 }
 
@@ -412,7 +412,7 @@ void declare_global_variables(void)
 
 	get_next_token(); /* получаем тип данных */
 
-	variable_type = current_tok; /* запоминаем тип данных */
+	variable_type = current_tok_datatype; /* запоминаем тип данных */
 
 	do
 	{ /* обработка списка с разделителями запятыми */
@@ -434,7 +434,7 @@ void decl_local(void)
 
 	get_next_token(); /* get type */
 
-	i.variable_type = current_tok;
+	i.variable_type = current_tok_datatype;
 	i.variable_value = 0; /* init to 0 */
 
 	do
@@ -516,7 +516,7 @@ void get_params(void)
 		p = &local_var_stack[i];
 		if (*current_token != ')')
 		{
-			if (current_tok != INT && current_tok != CHAR)
+			if (current_tok_datatype != INT && current_tok_datatype != CHAR)
 				syntax_error(TYPE_EXPECTED);
 
 			p->variable_type = token_type;
@@ -677,7 +677,7 @@ void exec_if(void)
 		find_eob(); /* find start of next line */
 		get_next_token();
 
-		if (current_tok != ELSE)
+		if (current_tok_datatype != ELSE)
 		{
 			shift_source_code_location_back(); /* restore current_token if
 						  no ELSE is present */
@@ -737,7 +737,7 @@ void exec_do(void)
 		return;
 	}
 	get_next_token();
-	if (current_tok != WHILE)
+	if (current_tok_datatype != WHILE)
 		syntax_error(WHILE_EXPECTED);
 	eval_exp(&cond); /* check the loop condition */
 	if (cond)
