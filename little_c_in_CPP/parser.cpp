@@ -24,13 +24,13 @@
 
 enum token_types //константы к которым обращаемся при нахождении нужных совпадений в коде / для хранения данных в буфере
 {
-    DELIMITER,
+    DELIMITER,  // !;,+-<>'/*%^= ()
     VARIABLE,
-    NUMBER,
+    NUMBER, 
     KEYWORD,
-    TEMP,
-    STRING,
-    BLOCK
+    TEMP,   //буфер для хранения части кода при проверках
+    STRING, //строки или то что надо преобразовать в строку
+    BLOCK   //блок кода в операторных скобках
 };
 
 enum tokens //тут храним операторы
@@ -47,14 +47,14 @@ enum tokens //тут храним операторы
     RETURN,
     CONTINUE,
     BREAK,
-    EOL,
+    EOL,    //end of line 
     FINISHED,
     END
 };
 
 enum double_ops
 {
-    LOWER = 1,
+    LOWER = 1,  //операторы отношений
     LOWER_OR_EQUAL,
     GREATER,
     GREATER_OR_EQUAL,
@@ -89,12 +89,12 @@ enum error_msg //коды ошибок
     DIV_BY_ZERO
 };
 
-extern char *source_code_location; /* current location in source code */
-extern char *program_start_buffer; /* points to start of program buffer */
-extern jmp_buf execution_buffer;   /* hold environment for longjmp() */
+extern char *source_code_location; /* указатель на исполняемый кусок кода */
+extern char *program_start_buffer; /* указатель на начало программы в буфере исполнения  */
+extern jmp_buf execution_buffer;   /* указатель на указатель longjmp() */
 
-/* An array of these structures will hold the info
-   associated with global variables.
+/* здесь хранится инфа о глобальных переменных
+* тип данных, значение, имя
 */
 extern struct variable_type
 {
@@ -103,7 +103,7 @@ extern struct variable_type
     int variable_value;
 } global_vars[NUM_GLOBAL_VARS];
 
-/*  This is the function call stack. */
+/*  Хранит тип возвращаемых данных, название функции, местоположение в коде. */
 extern struct function_type
 {
     char func_name[ID_LEN];
@@ -122,8 +122,8 @@ extern struct commands
    they can be put into the internal function table_with_statements that
    follows.
  */
-int call_getche(void), call_putch(void);
-int call_puts(void), print(void), getnum(void);
+int call_getche(void), call_putch(void);    //getchar(), putchar
+int call_puts(void), print(void), getnum(void); 
 
 struct intern_func_type
 {
@@ -144,14 +144,14 @@ extern char current_tok_datatype; /* internal representation of current_token */
 
 extern int ret_value; /* function return value */
 
-void eval_assignment_expression(int *value);
-void eval_expression(int *value);
-void eval_exp1(int *value);
-void eval_exp2(int *value);
-void eval_exp3(int *value);
-void eval_exp4(int *value);
-void eval_exp5(int *value);
-void atom(int *value);
+void eval_assignment_expression(int *value);    //Присваивание значения переменной
+void eval_expression(int *value);   
+void eval_exp1(int *value);     //обработка операторов отношений 
+void eval_exp2(int *value);     //обработка сложения или вычитания (в том числе инкремент и декремент, как я понял)
+void eval_exp3(int *value);     //обработка умножения, деления, целочисленного деления
+void eval_exp4(int *value);     //унарные плюс и минус
+void eval_exp5(int *value);     //обработка выражений в скобках
+void atom(int *value);      //найти значение числа, переменной или функции
 #if defined(_MSC_VER) && _MSC_VER >= 1200
 __declspec(noreturn) void syntax_error(int error);
 #elif __GNUC__
@@ -160,11 +160,11 @@ void syntax_error(int error) __attribute((noreturn));
 void syntax_error(int error);
 #endif
 
-void shift_source_code_location_back(void);
+void shift_source_code_location_back(void); //при ошибке возвращает указатель на место в коде, где все работало нормально
 void assign_var(char *var_name, int value);
 int is_delimiter(char c), is_whitespace(char c);
 int find_var(char *s);
-int internal_func(char *s);
+int internal_func(char *s); //обработка вложенных функций
 int is_variable(char *s);
 char *find_function_in_function_table(char *name), look_up_token_in_table(char *s), get_next_token(void);
 void call_function(void);
@@ -176,7 +176,7 @@ void eval_expression(int *value)
     get_next_token();
     if (!*current_token)
     {
-        syntax_error(NO_EXP);
+        syntax_error(NO_EXP);   //no expression 
         return;
     }
     if (*current_token == ';')
@@ -467,7 +467,9 @@ char get_next_token(void)
 
     temp_token = current_token;
     *temp_token = '\0';
-
+    //обработка конца строки для мака и для винды
+    //на самом деле это все спокойно можно заменить на SUB из Бейсика, 
+    //потому что он до сих пор поддерживается в новых ЯП как спецсимвол
     /* skip over white space */
     while (is_whitespace(*source_code_location) && *source_code_location)
         ++source_code_location;
@@ -523,7 +525,7 @@ char get_next_token(void)
     /* поиск комментариев */
     if (*source_code_location == '/')
         if (*(source_code_location + 1) == '*')
-        { /* найти конец комментария */
+        { /* найти конец комментария  */
             source_code_location += 2;
             do
             {
