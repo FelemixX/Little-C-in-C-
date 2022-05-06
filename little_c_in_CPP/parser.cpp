@@ -35,8 +35,8 @@ enum token_types //константы к которым обращаемся п�
 
 enum tokens //тут храним операторы
 {
-    ARG,
-    CHAR,
+    ARG,    //аргумент  
+    CHAR,   //тупо для типа данных chfr
     INT,
     IF,
     ELSE,
@@ -53,13 +53,13 @@ enum tokens //тут храним операторы
 };
 
 enum double_ops
-{
-    LOWER = 1,  //операторы отношений
-    LOWER_OR_EQUAL,
-    GREATER,
-    GREATER_OR_EQUAL,
-    EQUAL,
-    NOT_EQUAL
+{   /*операторы отношений*/
+    LOWER = 1,  //меньше
+    LOWER_OR_EQUAL, //меньше или равно
+    GREATER,    //больше
+    GREATER_OR_EQUAL,   //больше или равно
+    EQUAL,  //эквивалентно
+    NOT_EQUAL   //не эквивалентно
 };
 
 /* These are the constants used to call syntax_error() when
@@ -75,17 +75,17 @@ enum error_msg //коды ошибок
     EQUALS_EXPECTED,
     NOT_VAR,
     PARAM_ERR,
-    SEMICOLON_EXPECTED,
+    SEMICOLON_EXPECTED, //потерялась точка с запятой ;
     UNBAL_BRACES,
-    FUNC_UNDEFINED,
-    TYPE_EXPECTED,
-    NESTED_FUNCTIONS,
-    RET_NOCALL,
-    PAREN_EXPECTED,
+    FUNC_UNDEFINED, //неверно определена функция
+    TYPE_EXPECTED,  //не задан тип переменной или функции
+    NESTED_FUNCTIONS,   //функция определена внутри другой функции
+    RET_NOCALL, //функция ничего не возвращает
+    PAREN_EXPECTED, //где-то не закрыли или не открыли скобки
     WHILE_EXPECTED,
     QUOTE_EXPECTED,
     NOT_TEMP,
-    TOO_MANY_LVARS,
+    TOO_MANY_LVARS, //Переименовать в TOO_MANY_LOCAL_VARS. Слишком много локальных переменных ?
     DIV_BY_ZERO
 };
 
@@ -108,10 +108,10 @@ extern struct function_type
 {
     char func_name[ID_LEN];
     int ret_type;
-    char *loc; /* location of function entry point in file */
+    char *loc; /* точка вхождения начала функции в буфере программы */
 } func_stack[NUMBER_FUNCTIONS];
 
-/* Keyword table_with_statements */
+/* таблица состояний */
 extern struct commands
 {
     char command[20];
@@ -127,8 +127,8 @@ int call_puts(void), print(void), getnum(void);
 
 struct intern_func_type
 {
-    char *f_name;   /* function name */
-    int (*p)(void); /* pointer to the function */
+    char *f_name;   /* имя функции */
+    int (*p)(void); /* указатель на функцию */
 } intern_func[] = {
     {"getche", call_getche},
     {"putch", call_putch},
@@ -144,6 +144,8 @@ extern char current_tok_datatype; /* internal representation of current_token */
 
 extern int ret_value; /* function return value */
 
+                      /*Вот эти штуки стоит переименовать подстать тому что они делают*/
+
 void eval_assignment_expression(int *value);    //Присваивание значения переменной
 void eval_expression(int *value);   
 void eval_exp1(int *value);     //обработка операторов отношений 
@@ -152,6 +154,7 @@ void eval_exp3(int *value);     //обработка умножения, дел�
 void eval_exp4(int *value);     //унарные плюс и минус
 void eval_exp5(int *value);     //обработка выражений в скобках
 void atom(int *value);      //найти значение числа, переменной или функции
+
 #if defined(_MSC_VER) && _MSC_VER >= 1200
 __declspec(noreturn) void syntax_error(int error);
 #elif __GNUC__
@@ -170,7 +173,7 @@ char *find_function_in_function_table(char *name), look_up_token_in_table(char *
 void call_function(void);
 static void str_replace(char *line, const char *search, const char *replace);
 
-/* Entry point into parser. */
+/* Парсер. */
 void eval_expression(int *value)
 {
     get_next_token();
@@ -198,20 +201,20 @@ void eval_assignment_expression(int *value)
     if (token_type == VARIABLE)
     {
         if (is_variable(current_token))
-        { /* if a var, see if assignment */
+        { /* Если встретили переменную, то проверяем, присваивается ли ей какое-либо значение */
             strcpy_s(temp, ID_LEN, current_token);
             temp_tok = token_type;
             get_next_token();
             if (*current_token == '=')
-            { /* is an assignment */
+            { /* если присваивается */
                 get_next_token();
-                eval_assignment_expression(value); /* get value to assign */
-                assign_var(temp, *value);          /* assign the value */
+                eval_assignment_expression(value); /* то смотрим, что надо присвоить */
+                assign_var(temp, *value);          /* присваиваем */
                 return;
             }
             else
-            {                                      /* not an assignment */
-                shift_source_code_location_back(); /* restore original current_token */
+            {                                      /* если не присваевается */
+                shift_source_code_location_back(); /* то забываем про temp и копируем изначальное значение токена из temp_tok */
                 strcpy_s(current_token, 80, temp);
                 token_type = temp_tok;
             }
@@ -226,7 +229,13 @@ void eval_exp1(int *value)
     int partial_value;
     register char op;
     char relops[7] = {
-        LOWER, LOWER_OR_EQUAL, GREATER, GREATER_OR_EQUAL, EQUAL, NOT_EQUAL, 0};
+        LOWER, 
+        LOWER_OR_EQUAL,
+        GREATER, 
+        GREATER_OR_EQUAL,
+        EQUAL, 
+        NOT_EQUAL, 
+        0};
 
     eval_exp2(value);
     op = *current_token;
@@ -395,29 +404,32 @@ void syntax_error(int error_type)
     int line_count = 0;
     register int i;
 
-    static char *errors_human_readable[] = {
-        "syntax error",
-        "unbalanced parentheses",
-        "no expression present",
-        "equals sign expected",
-        "not a variable",
-        "parameter error",
-        "semicolon expected",
-        "unbalanced braces",
-        "function undefined",
-        "type specifier expected",
-        "too many nested function calls",
-        "return without call",
-        "parentheses expected",
-        "while expected",
-        "closing quote expected",
-        "not a string",
-        "too many local variables",
-        "division by zero"};
+    static char *errors_human_readable[] = {    //репрезентация ошибок анализатора в понятном для человека виде 
+        "Синтаксическая ошибка",
+        "Слишком много или мало скобок",
+        "Нет выражения",
+        "Не хватает знаков равно",
+        "Не является переменной",
+        "Параметрическая ошибка",
+        "Не хватает точки с запятой",
+        "Слишком много или мало операторных скобок",
+        "Функция не определена",
+        "Нужно указать тип данных",
+        "Слишком много обращений к вложенным функциям",
+        "Функция возвращает значения без обращения к ней",
+        "Не хватает скобки",
+        "Нет оператора для цикла while",
+        "Не хватает закрывающих кавычек",
+        "Не является строкой",
+        "Слишком много локальных переменных",
+        "На ноль делить НЕЛЬЗЯ"};
     printf("\n%s", errors_human_readable[error_type]);
 
     program_pointer_location = program_start_buffer;
 
+    /*В очередной раз напишу, что почти все эти считывания конца строки можно заменить устарвшим и забытым
+    Спецсимволом SUB из бейсика. 
+    Насколько мне известно, плюсы его тоже понимают, потому что недалеко ушли от оригинального СИ*/
     while (program_pointer_location != source_code_location && *program_pointer_location != '\0')
     { /* find line number of error_type */
         program_pointer_location++;
@@ -453,7 +465,10 @@ void syntax_error(int error_type)
     for (i = 0; i < 30 && program_pointer_location <= temp; i++, program_pointer_location++)
         printf("%c", *program_pointer_location);
 
-    longjmp(execution_buffer, 1); /* return to safe point */
+    longjmp(execution_buffer, 1); /* в данном случае буфер указывает на начало функции. 
+                                  Если он есть, значит в начале функция работала. 
+                                  Иначе он был бы до начала функции.
+                                  Проще говоря, он указывает на последний рабочий кусок кода*/
 }
 
 /* Get a current_token. */
@@ -641,7 +656,7 @@ char get_next_token(void)
     }
 
     if (*source_code_location == '"')
-    { /* quoted string */
+    { /* Обработка строки в кавычках */
         source_code_location++;
         while ((*source_code_location != '"' &&
                 *source_code_location != '\r' &&
