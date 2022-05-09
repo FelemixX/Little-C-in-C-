@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
 
 #define NUMBER_FUNCTIONS 100
 #define NUM_GLOBAL_VARS 100
@@ -162,6 +163,8 @@ int load_program(char *p, char *fname), find_var(char *s);
 void interpret_block(void), function_return(void);
 int func_pop(void), is_variable(char *s);
 char *find_function_in_function_table(char *name), get_next_token(void);
+
+using namespace std;
 
 int main(int argc, char *argv[])
 {

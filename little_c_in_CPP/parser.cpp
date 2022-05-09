@@ -769,7 +769,16 @@ int internal_func(char *s)
     return -1;
 }
 
-/* Return true if c is a delimiter. */
+/**
+ * @brief Разделитель
+ *
+ * Проверяет является ли символ разделителем
+ *
+ * @param Символ
+ *
+ * @return 1 - разделитель
+ * 0 - не разделитель
+ */
 int is_delimiter(char c)
 {
     if (strchr(" !;,+-<>'/*%^=()", c) || c == 9 ||
