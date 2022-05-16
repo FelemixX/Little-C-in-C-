@@ -3,68 +3,68 @@
  */
 enum token_types
 {
-	DELIMITER,
-	VARIABLE,
-	NUMBER,
-	KEYWORD,
-	TEMP,
-	STRING,
-	BLOCK
+	DELIMITER,      /* Константы разделителей и операторов... +-= и т.д. */
+	VARIABLE,       /* Переменная */
+	NUMBER,         /* Число */
+	KEYWORD,        /* Ключевое слово */
+	TEMP,           /* Буфер */
+	STRING,         /* Строка */
+	BLOCK           /* Блокировка интерпретатора. Обычно нужно когда закончили читать функцию или встретили ошибку */
 };
 /**
  * @brief Ключевые слова
  */
 enum tokens
 {
-	ARG,
-	CHAR,
-	INT,
-	IF,
-	ELSE,
-	FOR,
-	DO,
-	WHILE,
-	SWITCH,
-	RETURN,
-	CONTINUE,
-	BREAK,
-	EOL,
-	FINISHED,
-	END
+	ARG,            /* Аргумент */
+	CHAR,           /* Вещественный тип данных */
+	INT,            /* Целочисленный тип данных */
+	IF,             /* Оператор if */
+	ELSE,           /* Оператор else */
+	FOR,            /* Оператор for */
+	DO,             /* Оператор do  */
+	WHILE,          /* Оператор while */
+	SWITCH,         /* Оператор switch */
+	RETURN,         /* Оператор return */
+	CONTINUE,       /* Оператор contiue */
+	BREAK,          /* Оператор break */
+	EOL,            /* Конец строки */
+	FINISHED,       /* Кусок кода завершен */
+	END             /* Конец */
 };
 /**
  * @brief Операторы отношений
  */
 enum double_ops
 {
-	LOWER = 1,
-	LOWER_OR_EQUAL,
-	GREATER,
-	GREATER_OR_EQUAL,
-	EQUAL,
-	NOT_EQUAL
+	LOWER = 1,              /* Меньше чем */
+	LOWER_OR_EQUAL,         /* Меньше или равно */
+	GREATER,                /*  Больше */
+	GREATER_OR_EQUAL,       /* Больше или равно */
+	EQUAL,                  /*  Эквивалентно */
+	NOT_EQUAL               /*  Не эквивалентно */
 };
 /**
  * @brief Виды ошибок
  */
 enum error_msg
 {
-	SYNTAX,
-	UNBAL_PARENS,
-	NO_EXP,
-	EQUALS_EXPECTED,
-	NOT_VAR,
-	PARAM_ERR,
-	SEMICOLON_EXPECTED,
-	UNBAL_BRACES,
-	FUNC_UNDEFINED,
-	TYPE_EXPECTED,
-	NESTED_FUNCTIONS,
-	RET_NOCALL,
-	PAREN_EXPECTED,
-	WHILE_EXPECTED,
-	QUOTE_EXPECTED,
-	NOT_TEMP,
-	TOO_MANY_LVARS,
-	DIV_BY_ZERO
+	SYNTAX,                 /* Синтаксическая ошибка */
+	UNBAL_PARENS,           /* Скобок либо слишком много либо не хватает */
+	NO_EXP,                 /* Нет выражения, хотя предпосылки для его существования есть */
+	EQUALS_EXPECTED,        /* Не хватает знаков равно */
+	NOT_VAR,                /* Не является переменной */
+	PARAM_ERR,              /* Неправильно задан параметр */
+	SEMICOLON_EXPECTED,     /* Не хватает ; */
+	UNBAL_BRACES,           /* Операторных скобок либо слишком много либо не хватает */
+	FUNC_UNDEFINED,         /* Неправильно определена функция */
+	TYPE_EXPECTED,          /* Не указан тип данных */
+	NESTED_FUNCTIONS,       /* Функция вложена в функцию */
+	RET_NOCALL,             /* Функция ничего не возвращает */
+	PAREN_EXPECTED,         /* Ожидалась скобка */
+	WHILE_EXPECTED,         /* Ожидался цикл while */
+	QUOTE_EXPECTED,         /* Неправильно написан комментарий */
+	NOT_TEMP,               /* Не является строкой */
+	TOO_MANY_LVARS,         /* Превышен лимит на количество локальных переменных */
+	DIV_BY_ZERO             /* На ноль делить нельзя */
 };

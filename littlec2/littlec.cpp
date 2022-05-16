@@ -75,7 +75,7 @@ char current_tok_datatype;							/* внутреннее представлен�
 int function_last_index_on_call_stack;				/* индекс вершины стека вызова функции */
 int function_position;				   				/* индекс в таблице функций */
 int global_variable_position;		   				/* индекс глобальной переменной в таблице global_vars */
-int lvartos;										/* индекс в стеке локальных переменных */
+int local_var_to_stack_index;										/* индекс в стеке локальных переменных */
 int ret_value;										/* возвращаемое значение функции */
 int ret_occurring;									/* возврат функции */
 int break_occurring;								/* разрыв цикла */
@@ -159,7 +159,7 @@ void execute(char* fileName)
 	/// Определение адресов всех функций и глобальных переменных
 	prescan_source_code();
 	/// Инициализация индекса стека локальных переменных
-	lvartos = 0;
+	local_var_to_stack_index = 0;
 	/// Инициализация индекса стека вызова CALL
 	function_last_index_on_call_stack = 0;
 	/// initialize the break occurring flag
@@ -280,12 +280,12 @@ int load_program(char *p, char *fname)
 		*p = (char)getc(fp);
 		p++;
 		i++;
-	} while (!feof(fp) && i < PROG_SIZE);
+	} while (!feof(fp) && i < PROG_SIZE);     /* пока не найден конец строки */
 
-	if (*(p - 2) == 0x1a) // рудимент из бейсика. Ставится в конце исполняемого файла
-		*(p - 2) = '\0';  /* конец строки завершает программу */
+	if (*(p - 2) == 0x1a)                           /* если встретили символ конца строки из Бейсика */
+		*(p - 2) = '\0';                            /* то приравниваем его к современному символу конца строки перестаем считывать код программы */
 	else
-		*(p - 1) = '\0';
+		*(p - 1) = '\0';                            /*  если встретили современный символ конца строки, то так же завершаем загрузку программы во временный файл */
 	fclose(fp);
 	return 1;
 }
@@ -298,10 +298,8 @@ void prescan_source_code()
 {
 	char *initial_source_code_location, *temp_source_code_location;
 	char temp_token[ID_LEN + 1];
-	int datatype;
-	/// Если is_brace_open = 0, о текущая позиция указателя программы находится в не какой-либо функции
+	int datatype;                           /*  Если is_brace_open = 0, о текущая позиция указателя программы находится в не какой-либо функции */
 	int is_brace_open = 0;
-
 	initial_source_code_location = source_code_location;
 	function_position = 0;
 	do
@@ -318,28 +316,28 @@ void prescan_source_code()
 		temp_source_code_location = source_code_location;		/* запоминаем текущую позицию */
 		get_next_token();
 
-		/// тип глобальной переменной или возвращаемого значения функции
-		if (current_tok_datatype == CHAR || current_tok_datatype == INT)
+		                                    /* тип глобальной переменной или возвращаемого значения функции */
+		if (current_tok_datatype == CHAR || current_tok_datatype == INT)                            /*  если тип данных, который встретился вещественный или целочисленный */
 		{
 			datatype = current_tok_datatype;		/* сохраняем тип данных */
 			get_next_token();
-			if (token_type == VARIABLE)
+			if (token_type == VARIABLE)                         /*  если найденная штука является переменной */
 			{
-				//
-				strcpy_s(temp_token, ID_LEN + 1, current_token);
+				strcpy_s(temp_token, ID_LEN + 1, current_token);                            /*  проверяем, есть ли дальше в коде скобки */
 				get_next_token();
-				if (*current_token != '(')								/* должно быть глобальной переменной */
+				if (*current_token != '(')								/* если встретили не открывающую скобку*/
 				{
 					source_code_location = temp_source_code_location;	/* вернуться в начало объявления */
 					declare_global_variables();
 				}
-				else if (*current_token == '(')							/* должно быть функцией */
+				else if (*current_token == '(')							/* если встретили скобку, будем сразу предполагать, что она где-то закрывается,
+                                                                        а в самих скобках что-то есть */
 				{
 					function_table[function_position].loc = source_code_location;
 					function_table[function_position].ret_type = datatype;
 					strcpy_s(function_table[function_position].func_name, ID_LEN, temp_token);
 					function_position++;
-					while (*source_code_location != ')')
+					while (*source_code_location != ')')                            /*  сканируем код, пока не найдется закрывающая скобка */
 						source_code_location++;
 					source_code_location++;
 					/* сейчас source_code_location указывает на открывающуюся фигурную скобку функции */
@@ -364,7 +362,7 @@ void declare_global_variables()
 	get_next_token();							/* получаем тип данных */
 	variable_type = current_tok_datatype;		/* запоминаем тип данных */
 
-	/// Обработка списка переменных
+	                                            /* Обработка списка переменных */
 	do
 	{
 		global_vars[global_variable_position].variable_type = variable_type;
@@ -387,7 +385,7 @@ void declare_local_variables()
 {
 	struct variable_type i;
 
-	/// Получить типа
+	                            /* получить тип данных следующего встретившегося выражения */ 
 	get_next_token();
 
 	i.variable_type = current_tok_datatype;
@@ -411,24 +409,24 @@ void declare_local_variables()
 void call_function()
 {
 	char *function_location, *temp_source_code_location;
-	int lvartemp;
+	int local_var_temp;
 
 	function_location = find_function_in_function_table(current_token);		/* найти точку входа функции */
 	if (function_location == NULL)
 		syntax_error(FUNC_UNDEFINED);											/* функция не определена */
 	else
 	{
-		lvartemp = lvartos;															/* запоминание индекса стека локальных переменных */
+		local_var_temp = local_var_to_stack_index;									/* запоминание индекса стека локальных переменных */
 		get_function_arguments();													/* получение аргумента функции */
 		temp_source_code_location = source_code_location;							/* запоминание адреса возврата */
-		function_push_variables_on_call_stack(lvartemp);							/* запоминание индекса стека локальных переменных */
+		function_push_variables_on_call_stack(local_var_temp);					/* запоминание индекса стека локальных переменных */
 		source_code_location = function_location;									/* переустановка source_code_location в начало функции */
 		ret_occurring = 0;								  							/* P возвращаемая возникающая переменная */
 		get_function_parameters();						  							/* загрузка параметров функции значениями аргументов */
 		interpret_block();								  							/* интерпретация функции */
 		ret_occurring = 0;								  							/* обнуление возвращаемой переменной */
 		source_code_location = temp_source_code_location;							/* восстановление initial_source_code_location */
-		lvartos = func_pop();							  							/* сброс стека локальных переменных */
+		local_var_to_stack_index = func_pop();							  			/* сброс стека локальных переменных */
 	}
 }
 /**
@@ -444,7 +442,7 @@ char *find_function_in_function_table(char *name)
 		if (!strcmp(name, function_table[function_pos].func_name))
 			return function_table[function_pos].loc;
 
-	return nullptr;
+	return nullptr;                         /*  указатель на начало функции */
 }
 /**
  * @brief Заталкивание аргументов функций в стек локальных переменных
@@ -457,7 +455,7 @@ void get_function_arguments()
 	count = 0;
 	get_next_token();
 	if (*current_token != '(')
-		syntax_error(PAREN_EXPECTED);
+		syntax_error(PAREN_EXPECTED);                           /*  Не хватает скобки или их больше, чем нужно */
 
 	/// Обработка списка значений
 	do
@@ -485,7 +483,7 @@ void get_function_parameters()
 	struct variable_type *variable_type_pointer;
 	int position;
 
-	position = lvartos - 1;
+	position = local_var_to_stack_index - 1;
 
 	/// Обработка списка параметров
 	do
@@ -527,14 +525,14 @@ void function_return()
  */
 void local_push(struct variable_type i)
 {
-	if (lvartos >= NUM_LOCAL_VARS)
+	if (local_var_to_stack_index >= NUM_LOCAL_VARS)
 	{
 		syntax_error(TOO_MANY_LVARS);
 	}
 	else
 	{
-		local_var_stack[lvartos] = i;
-		lvartos++;
+		local_var_stack[local_var_to_stack_index] = i;
+		local_var_to_stack_index++;
 	}
 }
 /**
@@ -585,7 +583,7 @@ void assign_var(char *var_name, int value)
 {
 	int i;
 	/// Проверка наличия локальной переменной
-	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
+	for (i = local_var_to_stack_index - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 	{
 		if (!strcmp(local_var_stack[i].variable_name, var_name))
 		{
@@ -593,7 +591,7 @@ void assign_var(char *var_name, int value)
 			return;
 		}
 	}
-	/// Если переменная нелокальная, ищем ее в таблице глобальных переменных
+	/// Если переменная не локальная, ищем ее в таблице глобальных переменных
 	if (i < call_stack[function_last_index_on_call_stack - 1])
 		for (i = 0; i < NUM_GLOBAL_VARS; i++)
 			if (!strcmp(global_vars[i].variable_name, var_name))
@@ -613,7 +611,7 @@ int find_var(char *s)
 {
 	int i;
 	/// Проверка наличия переменной
-	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
+	for (i = local_var_to_stack_index - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 		if (!strcmp(local_var_stack[i].variable_name, current_token))
 			return local_var_stack[i].variable_value;
 	/// в противном случае проверим, может быть это глобальная переменная
@@ -633,7 +631,7 @@ int is_variable(char *s)
 {
 	int i;
 	/// Это локальная переменная ?
-	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
+	for (i = local_var_to_stack_index - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 		if (!strcmp(local_var_stack[i].variable_name, current_token))
 			return 1;
 	/// Если нет - поиск среди глобальных переменных
