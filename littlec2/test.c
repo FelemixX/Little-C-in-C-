@@ -17,12 +17,23 @@ int testFunc(int num)
 }
 int main()
 {
-	int te;
-	te = 12;
-	puts("check");
-	puts("pepepopochechk");
+	int test;
+	test = 12;
+	puts("check\n");
+	puts("pepepopochechk\n");
 	int l;
 	l = 12;
 	testFunc(l);
-	return 0;
+
+    print("Test is:"); //test
+    print(test);
+
+    while(test <= 15)
+    {
+        print("\nTesting while\n");
+        print(test);
+        test = test + 1;
+    }
+
+	return 0; /*test*/
 }
