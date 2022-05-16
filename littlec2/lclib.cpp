@@ -12,10 +12,10 @@
 #include <stdlib.h>
 #include "enum.h"
 
-extern char *source_code_location;							/* текущее положение в исходном тексте программы */
-extern char current_token[80];								/* строковое представление current_token */
-extern char token_type;										/* содержит тип current_token */
-extern char current_tok_datatype;							/* внутреннее представление current_token */
+extern char *source_code_location; /* текущее положение в исходном тексте программы */
+extern char current_token[80];	   /* строковое представление current_token */
+extern char token_type;			   /* содержит тип current_token */
+extern char current_tok_datatype;  /* внутреннее представление current_token */
 
 int get_next_token(void);
 void syntax_error(int error), eval_expression(int *result);
@@ -59,7 +59,7 @@ int call_putch(void)
 int call_puts(void)
 {
 	get_next_token();
-	if (*current_token != '(') 
+	if (*current_token != '(')
 		syntax_error(PAREN_EXPECTED);
 	get_next_token();
 	if (token_type != STRING)
