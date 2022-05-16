@@ -312,7 +312,7 @@ void atom(int *value)
 	case VARIABLE:
 		i = internal_func(current_token);
 		if (i != -1)
-		{ /* call "standard library" function */
+		{ /* вызов стантартной функции */
 			*value = (*intern_func[i].p)();
 		}
 		else if (find_function_in_function_table(current_token))

@@ -65,22 +65,22 @@ commands table_with_statements[] = {
 	{"", END},
 };
 
-char *source_code_location;							/* текущее положение в исходном тексте программы */
-char *program_start_buffer;							/* указатель на начало буфера программы */
-jmp_buf execution_buffer;							/* содержит данные для longjmp() */
-int call_stack[NUMBER_FUNCTIONS];					/* массив вызванных функций  */
-char current_token[80];								/* строковое представление current_token */
-char token_type;									/* содержит тип current_token */
-char current_tok_datatype;							/* внутреннее представление current_token */
-int function_last_index_on_call_stack;				/* индекс вершины стека вызова функции */
-int function_position;				   				/* индекс в таблице функций */
-int global_variable_position;		   				/* индекс глобальной переменной в таблице global_vars */
-int lvartos;										/* индекс в стеке локальных переменных */
-int ret_value;										/* возвращаемое значение функции */
-int ret_occurring;									/* возврат функции */
-int break_occurring;								/* разрыв цикла */
+char *source_code_location;			   /* текущее положение в исходном тексте программы */
+char *program_start_buffer;			   /* указатель на начало буфера программы */
+jmp_buf execution_buffer;			   /* содержит данные для longjmp() */
+int call_stack[NUMBER_FUNCTIONS];	   /* массив вызванных функций  */
+char current_token[80];				   /* строковое представление current_token */
+char token_type;					   /* содержит тип current_token */
+char current_tok_datatype;			   /* внутреннее представление current_token */
+int function_last_index_on_call_stack; /* индекс вершины стека вызова функции */
+int function_position;				   /* индекс в таблице функций */
+int global_variable_position;		   /* индекс глобальной переменной в таблице global_vars */
+int lvartos;						   /* индекс в стеке локальных переменных */
+int ret_value;						   /* возвращаемое значение функции */
+int ret_occurring;					   /* возврат функции */
+int break_occurring;				   /* разрыв цикла */
 /// Функции из интерпретатора
-void execute(char* fileName);
+void execute(char *fileName);
 void interpret_block();
 int load_program(char *p, char *fname);
 void prescan_source_code();
@@ -110,14 +110,21 @@ void eval_expression(int *value);
 void syntax_error(int error);
 char get_next_token();
 
-int main()
+int main(int argc, char *argv[])
 {
 	string file;
-	cout << "Файл: ";
-	cin >> file;
-
-	char *file_name = new char[file.length() + 1];
-	strcpy(file_name, file.c_str());
+	char *file_name;
+	if (argc == 2)
+	{
+		strcpy(file_name, argv[1]);
+	}
+	else
+	{
+		cout << "Файл: ";
+		cin >> file;
+		file_name = new char[file.length() + 1];
+		strcpy(file_name, file.c_str());
+	}
 
 	execute(file_name);
 
@@ -127,7 +134,7 @@ int main()
  * @brief Выполнить интерпретация и исполнить код
  * @param fileName
  */
-void execute(char* fileName)
+void execute(char *fileName)
 {
 	/// Если названия файла нет - выход
 	if (fileName[0] == ' ')
@@ -194,70 +201,70 @@ void interpret_block()
 		/// При интерпретации одного оператора возврат после первой точки с запятой.
 
 		/// Определение типа лексемы
-		if (token_type == VARIABLE)						/* Это не зарегистрированное слово, обрабатывается выражение. */
+		if (token_type == VARIABLE) /* Это не зарегистрированное слово, обрабатывается выражение. */
 		{
-			shift_source_code_location_back();			/* возврат лексемы во входной поток для дальнейшей обработки функцией eval_exp() */
-			eval_expression(&value);		   		/* обработка выражения */
+			shift_source_code_location_back(); /* возврат лексемы во входной поток для дальнейшей обработки функцией eval_exp() */
+			eval_expression(&value);		   /* обработка выражения */
 			if (*current_token != ';')
 				syntax_error(SEMICOLON_EXPECTED);
 		}
-		else if (token_type == BLOCK)					/* Это ограничитель блока */
+		else if (token_type == BLOCK) /* Это ограничитель блока */
 		{
-			if (*current_token == '{') 					/* Блок */
-				block = 1;			   					/* Интерпретация блока, а не оператора */
+			if (*current_token == '{') /* Блок */
+				block = 1;			   /* Интерпретация блока, а не оператора */
 			else
-				return;									/* Это }, выход */
+				return; /* Это }, выход */
 		}
-		else											/* Зарезервированное слово */
+		else /* Зарезервированное слово */
 			switch (current_tok_datatype)
 			{
-				case CHAR:
-				case INT:								/* объявление локальной переменной */
-					shift_source_code_location_back();
-					declare_local_variables();
-					break;
-				case RETURN:							/* возврат из вызова функции */
-					function_return();
-					ret_occurring = 1;
+			case CHAR:
+			case INT: /* объявление локальной переменной */
+				shift_source_code_location_back();
+				declare_local_variables();
+				break;
+			case RETURN: /* возврат из вызова функции */
+				function_return();
+				ret_occurring = 1;
+				return;
+			case CONTINUE: /* обработка оператора continue */
+				return;
+			case BREAK: /* выход из цикла */
+				break_occurring = 1;
+				return;
+			case IF: /* обработка оператора if */
+				execute_if_statement();
+				if (ret_occurring > 0 || break_occurring > 0)
+				{
 					return;
-				case CONTINUE:							/* обработка оператора continue */
+				}
+				break;
+			case ELSE:		/* обработка оператора else */
+				find_eob(); /* поиск конца блока else и продолжение выполнения */
+				break;
+			case WHILE: /* обработка цикла while */
+				exec_while();
+				if (ret_occurring > 0)
+				{
 					return;
-				case BREAK:								/* выход из цикла */
-					break_occurring = 1;
+				}
+				break;
+			case DO: /* обработка цикла do-while */
+				exec_do();
+				if (ret_occurring > 0)
+				{
 					return;
-				case IF:								/* обработка оператора if */
-					execute_if_statement();
-					if (ret_occurring > 0 || break_occurring > 0)
-					{
-						return;
-					}
-					break;
-				case ELSE:								/* обработка оператора else */
-					find_eob();							/* поиск конца блока else и продолжение выполнения */
-					break;
-				case WHILE:								/* обработка цикла while */
-					exec_while();
-					if (ret_occurring > 0)
-					{
-						return;
-					}
-					break;
-				case DO:								/* обработка цикла do-while */
-					exec_do();
-					if (ret_occurring > 0)
-					{
-						return;
-					}
-					break;
-				case FOR:								/* обработка цикла for */
-					exec_for();
-					if (ret_occurring > 0)
-					{
-						return;
-					}
-					break;
-				case END:								/* Конец uwu */
-					exit(0);
+				}
+				break;
+			case FOR: /* обработка цикла for */
+				exec_for();
+				if (ret_occurring > 0)
+				{
+					return;
+				}
+				break;
+			case END: /* Конец uwu */
+				exit(0);
 			}
 	} while (current_tok_datatype != FINISHED && block);
 }
@@ -306,34 +313,34 @@ void prescan_source_code()
 	function_position = 0;
 	do
 	{
-		while (is_brace_open)				/* обхода кода функции внутри фигурных скобок */
+		while (is_brace_open) /* обхода кода функции внутри фигурных скобок */
 		{
 			get_next_token();
-			if (*current_token == '{')		/* когда встречаем открывающую скобку, увеличиваем is_brace_open на один */
+			if (*current_token == '{') /* когда встречаем открывающую скобку, увеличиваем is_brace_open на один */
 				is_brace_open++;
 			if (*current_token == '}')
-				is_brace_open--; 			/* когда встречаем закрывающую уменьшаем на один */
+				is_brace_open--; /* когда встречаем закрывающую уменьшаем на один */
 		}
 
-		temp_source_code_location = source_code_location;		/* запоминаем текущую позицию */
+		temp_source_code_location = source_code_location; /* запоминаем текущую позицию */
 		get_next_token();
 
 		/// тип глобальной переменной или возвращаемого значения функции
 		if (current_tok_datatype == CHAR || current_tok_datatype == INT)
 		{
-			datatype = current_tok_datatype;		/* сохраняем тип данных */
+			datatype = current_tok_datatype; /* сохраняем тип данных */
 			get_next_token();
 			if (token_type == VARIABLE)
 			{
 				//
 				strcpy_s(temp_token, ID_LEN + 1, current_token);
 				get_next_token();
-				if (*current_token != '(')								/* должно быть глобальной переменной */
+				if (*current_token != '(') /* должно быть глобальной переменной */
 				{
-					source_code_location = temp_source_code_location;	/* вернуться в начало объявления */
+					source_code_location = temp_source_code_location; /* вернуться в начало объявления */
 					declare_global_variables();
 				}
-				else if (*current_token == '(')							/* должно быть функцией */
+				else if (*current_token == '(') /* должно быть функцией */
 				{
 					function_table[function_position].loc = source_code_location;
 					function_table[function_position].ret_type = datatype;
@@ -361,15 +368,15 @@ void prescan_source_code()
 void declare_global_variables()
 {
 	int variable_type;
-	get_next_token();							/* получаем тип данных */
-	variable_type = current_tok_datatype;		/* запоминаем тип данных */
+	get_next_token();					  /* получаем тип данных */
+	variable_type = current_tok_datatype; /* запоминаем тип данных */
 
 	/// Обработка списка переменных
 	do
 	{
 		global_vars[global_variable_position].variable_type = variable_type;
-		global_vars[global_variable_position].variable_value = 0; 							/* инициализируем нулем */
-		get_next_token();										  							/* определяем имя */
+		global_vars[global_variable_position].variable_value = 0; /* инициализируем нулем */
+		get_next_token();										  /* определяем имя */
 		strcpy_s(global_vars[global_variable_position].variable_name, ID_LEN, current_token);
 		get_next_token();
 		global_variable_position++;
@@ -391,12 +398,12 @@ void declare_local_variables()
 	get_next_token();
 
 	i.variable_type = current_tok_datatype;
-	i.variable_value = 0;			/* Инициализация нулем 0 */
+	i.variable_value = 0; /* Инициализация нулем 0 */
 
 	/// Обработка списка переменных
 	do
 	{
-		get_next_token();			/* определение имени */
+		get_next_token(); /* определение имени */
 		strcpy_s(i.variable_name, ID_LEN, current_token);
 		local_push(i);
 		get_next_token();
@@ -413,22 +420,22 @@ void call_function()
 	char *function_location, *temp_source_code_location;
 	int lvartemp;
 
-	function_location = find_function_in_function_table(current_token);		/* найти точку входа функции */
+	function_location = find_function_in_function_table(current_token); /* найти точку входа функции */
 	if (function_location == NULL)
-		syntax_error(FUNC_UNDEFINED);											/* функция не определена */
+		syntax_error(FUNC_UNDEFINED); /* функция не определена */
 	else
 	{
-		lvartemp = lvartos;															/* запоминание индекса стека локальных переменных */
-		get_function_arguments();													/* получение аргумента функции */
-		temp_source_code_location = source_code_location;							/* запоминание адреса возврата */
-		function_push_variables_on_call_stack(lvartemp);							/* запоминание индекса стека локальных переменных */
-		source_code_location = function_location;									/* переустановка source_code_location в начало функции */
-		ret_occurring = 0;								  							/* P возвращаемая возникающая переменная */
-		get_function_parameters();						  							/* загрузка параметров функции значениями аргументов */
-		interpret_block();								  							/* интерпретация функции */
-		ret_occurring = 0;								  							/* обнуление возвращаемой переменной */
-		source_code_location = temp_source_code_location;							/* восстановление initial_source_code_location */
-		lvartos = func_pop();							  							/* сброс стека локальных переменных */
+		lvartemp = lvartos;								  /* запоминание индекса стека локальных переменных */
+		get_function_arguments();						  /* получение аргумента функции */
+		temp_source_code_location = source_code_location; /* запоминание адреса возврата */
+		function_push_variables_on_call_stack(lvartemp);  /* запоминание индекса стека локальных переменных */
+		source_code_location = function_location;		  /* переустановка source_code_location в начало функции */
+		ret_occurring = 0;								  /* P возвращаемая возникающая переменная */
+		get_function_parameters();						  /* загрузка параметров функции значениями аргументов */
+		interpret_block();								  /* интерпретация функции */
+		ret_occurring = 0;								  /* обнуление возвращаемой переменной */
+		source_code_location = temp_source_code_location; /* восстановление initial_source_code_location */
+		lvartos = func_pop();							  /* сброс стека локальных переменных */
 	}
 }
 /**
@@ -463,7 +470,7 @@ void get_function_arguments()
 	do
 	{
 		eval_expression(&value);
-		temp[count] = value;			/* временное запоминание */
+		temp[count] = value; /* временное запоминание */
 		get_next_token();
 		count++;
 	} while (*current_token == ',');
@@ -648,18 +655,18 @@ int is_variable(char *s)
 void execute_if_statement()
 {
 	int condition;
-	eval_expression(&condition);			/* вычисление if-выражения */
-	if (condition)								/* истина - интерпретация if-предложения */
+	eval_expression(&condition); /* вычисление if-выражения */
+	if (condition)				 /* истина - интерпретация if-предложения */
 	{
 		interpret_block();
 	}
-	else										/* в противном случае пропуск if-предложения и выполнение else-предложения, если оно есть */
+	else /* в противном случае пропуск if-предложения и выполнение else-предложения, если оно есть */
 	{
-		find_eob();								/* поиск конца блока */
+		find_eob(); /* поиск конца блока */
 		get_next_token();
 		if (current_tok_datatype != ELSE)
 		{
-			shift_source_code_location_back();	/* восстановление лексемы, если else-предложение отсутствует */
+			shift_source_code_location_back(); /* восстановление лексемы, если else-предложение отсутствует */
 			return;
 		}
 		interpret_block();
@@ -672,12 +679,12 @@ void exec_while()
 {
 	int cond;
 	char *temp;
-	break_occurring = 0;				/* флаг break */
+	break_occurring = 0; /* флаг break */
 	shift_source_code_location_back();
-	temp = source_code_location;		/* запоминание адреса начала цикла while */
+	temp = source_code_location; /* запоминание адреса начала цикла while */
 	get_next_token();
-	eval_expression(&cond);		/* вычисление управляющего выражения */
-	if (cond)							/* если оно истинно, то выполнить интерпретацию */
+	eval_expression(&cond); /* вычисление управляющего выражения */
+	if (cond)				/* если оно истинно, то выполнить интерпретацию */
 	{
 		interpret_block();
 		if (break_occurring > 0)
@@ -686,12 +693,12 @@ void exec_while()
 			return;
 		}
 	}
-	else								/* в противном случае цикл пропускается */
+	else /* в противном случае цикл пропускается */
 	{
 		find_eob();
 		return;
 	}
-	source_code_location = temp;		/* возврат к началу цикла */
+	source_code_location = temp; /* возврат к началу цикла */
 }
 /**
  * @brief Выполнение блока do
@@ -702,11 +709,11 @@ void exec_do()
 	char *temp;
 
 	shift_source_code_location_back();
-	temp = source_code_location;			/* запоминание адреса начала цикла */
-	break_occurring = 0;					/* флаг break */
+	temp = source_code_location; /* запоминание адреса начала цикла */
+	break_occurring = 0;		 /* флаг break */
 
-	get_next_token();						/* найти начало цикла */
-	interpret_block();						/* интерпритация цикла */
+	get_next_token();  /* найти начало цикла */
+	interpret_block(); /* интерпритация цикла */
 	if (ret_occurring > 0)
 	{
 		return;
@@ -719,9 +726,9 @@ void exec_do()
 	get_next_token();
 	if (current_tok_datatype != WHILE)
 		syntax_error(WHILE_EXPECTED);
-	eval_expression(&cond);			/* проверка условия цикла */
+	eval_expression(&cond); /* проверка условия цикла */
 	if (cond)
-		source_code_location = temp;		/* если условие истинно, то цикл выполняется, в противном случае происходит выход из цикла */
+		source_code_location = temp; /* если условие истинно, то цикл выполняется, в противном случае происходит выход из цикла */
 }
 /**
  * @brief Поиск конца блока
@@ -750,20 +757,20 @@ void exec_for(void)
 	char *temp, *temp2;
 	int brace;
 
-	break_occurring = 0;						/* флаг break */
+	break_occurring = 0; /* флаг break */
 	get_next_token();
-	eval_expression(&cond);				/* инициализирующее выражение */
+	eval_expression(&cond); /* инициализирующее выражение */
 	if (*current_token != ';')
 		syntax_error(SEMICOLON_EXPECTED);
 
-	source_code_location++;						/* пропуск ; */
+	source_code_location++; /* пропуск ; */
 	temp = source_code_location;
 	for (;;)
 	{
-		eval_expression(&cond);			/* проверка условия */
+		eval_expression(&cond); /* проверка условия */
 		if (*current_token != ';')
 			syntax_error(SEMICOLON_EXPECTED);
-		source_code_location++;					/* пропуск ; */
+		source_code_location++; /* пропуск ; */
 		temp2 = source_code_location;
 
 		/// Поиск начала тела цикла
@@ -791,13 +798,13 @@ void exec_for(void)
 				return;
 			}
 		}
-		else									/* в противном случае обойти цикл */
+		else /* в противном случае обойти цикл */
 		{
 			find_eob();
 			return;
 		}
 		source_code_location = temp2;
-		eval_expression(&cond);			/* выполнение инкремента */
-		source_code_location = temp;			/* возврат в начало цикла */
+		eval_expression(&cond);		 /* выполнение инкремента */
+		source_code_location = temp; /* возврат в начало цикла */
 	}
 }
