@@ -73,9 +73,9 @@ char current_token[80];				   /* строковое представление c
 char token_type;					   /* содержит тип current_token */
 char current_tok_datatype;			   /* внутреннее представление current_token */
 int function_last_index_on_call_stack; /* индекс вершины стека вызова функции */
-int function_position;				   /* индекс в таблице функций */
+int pos_in_funcition;				   /* индекс в таблице функций */
 int global_variable_position;		   /* индекс глобальной переменной в таблице global_vars */
-int lvartos;						   /* индекс в стеке локальных переменных */
+int local_var_to_stack;						   /* индекс в стеке локальных переменных */
 int ret_value;						   /* возвращаемое значение функции */
 int ret_occurring;					   /* возврат функции */
 int break_occurring;				   /* разрыв цикла */
@@ -166,7 +166,7 @@ void execute(char *fileName)
 	/// Определение адресов всех функций и глобальных переменных
 	prescan_source_code();
 	/// Инициализация индекса стека локальных переменных
-	lvartos = 0;
+	local_var_to_stack = 0;
 	/// Инициализация индекса стека вызова CALL
 	function_last_index_on_call_stack = 0;
 	/// initialize the break occurring flag
@@ -310,7 +310,7 @@ void prescan_source_code()
 	int is_brace_open = 0;
 
 	initial_source_code_location = source_code_location;
-	function_position = 0;
+	pos_in_funcition = 0;
 	do
 	{
 		while (is_brace_open) /* обхода кода функции внутри фигурных скобок */
@@ -342,10 +342,10 @@ void prescan_source_code()
 				}
 				else if (*current_token == '(') /* должно быть функцией */
 				{
-					function_table[function_position].loc = source_code_location;
-					function_table[function_position].ret_type = datatype;
-					strcpy_s(function_table[function_position].func_name, ID_LEN, temp_token);
-					function_position++;
+					function_table[pos_in_funcition].loc = source_code_location;
+					function_table[pos_in_funcition].ret_type = datatype;
+					strcpy_s(function_table[pos_in_funcition].func_name, ID_LEN, temp_token);
+					pos_in_funcition++;
 					while (*source_code_location != ')')
 						source_code_location++;
 					source_code_location++;
@@ -418,24 +418,24 @@ void declare_local_variables()
 void call_function()
 {
 	char *function_location, *temp_source_code_location;
-	int lvartemp;
+	int local_var_temp;
 
 	function_location = find_function_in_function_table(current_token); /* найти точку входа функции */
 	if (function_location == NULL)
 		syntax_error(FUNC_UNDEFINED); /* функция не определена */
 	else
 	{
-		lvartemp = lvartos;								  /* запоминание индекса стека локальных переменных */
+		local_var_temp = local_var_to_stack;								  /* запоминание индекса стека локальных переменных */
 		get_function_arguments();						  /* получение аргумента функции */
 		temp_source_code_location = source_code_location; /* запоминание адреса возврата */
-		function_push_variables_on_call_stack(lvartemp);  /* запоминание индекса стека локальных переменных */
+		function_push_variables_on_call_stack(local_var_temp);  /* запоминание индекса стека локальных переменных */
 		source_code_location = function_location;		  /* переустановка source_code_location в начало функции */
 		ret_occurring = 0;								  /* P возвращаемая возникающая переменная */
 		get_function_parameters();						  /* загрузка параметров функции значениями аргументов */
 		interpret_block();								  /* интерпретация функции */
 		ret_occurring = 0;								  /* обнуление возвращаемой переменной */
 		source_code_location = temp_source_code_location; /* восстановление initial_source_code_location */
-		lvartos = func_pop();							  /* сброс стека локальных переменных */
+		local_var_to_stack = func_pop();							  /* сброс стека локальных переменных */
 	}
 }
 /**
@@ -445,11 +445,11 @@ void call_function()
  */
 char *find_function_in_function_table(char *name)
 {
-	int function_pos;
+	int pos_in_func;
 
-	for (function_pos = 0; function_pos < function_position; function_pos++)
-		if (!strcmp(name, function_table[function_pos].func_name))
-			return function_table[function_pos].loc;
+	for (pos_in_func = 0; pos_in_func < pos_in_funcition; pos_in_func++)
+		if (!strcmp(name, function_table[pos_in_func].func_name))
+			return function_table[pos_in_func].loc;
 
 	return nullptr;
 }
@@ -473,7 +473,8 @@ void get_function_arguments()
 		temp[count] = value; /* временное запоминание */
 		get_next_token();
 		count++;
-	} while (*current_token == ',');
+	}
+    while (*current_token == ',');
 	count--;
 
 	/// Затолкнуть в local_var_stack в обратном порядке
@@ -492,7 +493,7 @@ void get_function_parameters()
 	struct variable_type *variable_type_pointer;
 	int position;
 
-	position = lvartos - 1;
+	position = local_var_to_stack - 1;
 
 	/// Обработка списка параметров
 	do
@@ -514,7 +515,8 @@ void get_function_parameters()
 		}
 		else
 			break;
-	} while (*current_token == ',');
+	}
+    while (*current_token == ',');
 	if (*current_token != ')')
 		syntax_error(PAREN_EXPECTED);
 }
@@ -534,14 +536,14 @@ void function_return()
  */
 void local_push(struct variable_type i)
 {
-	if (lvartos >= NUM_LOCAL_VARS)
+	if (local_var_to_stack >= NUM_LOCAL_VARS)
 	{
 		syntax_error(TOO_MANY_LVARS);
 	}
 	else
 	{
-		local_var_stack[lvartos] = i;
-		lvartos++;
+		local_var_stack[local_var_to_stack] = i;
+		local_var_to_stack++;
 	}
 }
 /**
@@ -592,7 +594,7 @@ void assign_var(char *var_name, int value)
 {
 	int i;
 	/// Проверка наличия локальной переменной
-	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
+	for (i = local_var_to_stack - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 	{
 		if (!strcmp(local_var_stack[i].variable_name, var_name))
 		{
@@ -620,7 +622,7 @@ int find_var(char *s)
 {
 	int i;
 	/// Проверка наличия переменной
-	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
+	for (i = local_var_to_stack - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 		if (!strcmp(local_var_stack[i].variable_name, current_token))
 			return local_var_stack[i].variable_value;
 	/// в противном случае проверим, может быть это глобальная переменная
@@ -640,7 +642,7 @@ int is_variable(char *s)
 {
 	int i;
 	/// Это локальная переменная ?
-	for (i = lvartos - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
+	for (i = local_var_to_stack - 1; i >= call_stack[function_last_index_on_call_stack - 1]; i--)
 		if (!strcmp(local_var_stack[i].variable_name, current_token))
 			return 1;
 	/// Если нет - поиск среди глобальных переменных
@@ -654,9 +656,9 @@ int is_variable(char *s)
  */
 void execute_if_statement()
 {
-	int condition;
-	eval_expression(&condition); /* вычисление if-выражения */
-	if (condition)				 /* истина - интерпретация if-предложения */
+	int conditionition;
+	eval_expression(&conditionition); /* вычисление if-выражения */
+	if (conditionition)				 /* истина - интерпретация if-предложения */
 	{
 		interpret_block();
 	}
@@ -677,14 +679,14 @@ void execute_if_statement()
  */
 void exec_while()
 {
-	int cond;
+	int condition;
 	char *temp;
 	break_occurring = 0; /* флаг break */
 	shift_source_code_location_back();
 	temp = source_code_location; /* запоминание адреса начала цикла while */
 	get_next_token();
-	eval_expression(&cond); /* вычисление управляющего выражения */
-	if (cond)				/* если оно истинно, то выполнить интерпретацию */
+	eval_expression(&condition); /* вычисление управляющего выражения */
+	if (condition)				/* если оно истинно, то выполнить интерпретацию */
 	{
 		interpret_block();
 		if (break_occurring > 0)
@@ -705,7 +707,7 @@ void exec_while()
  */
 void exec_do()
 {
-	int cond;
+	int condition;
 	char *temp;
 
 	shift_source_code_location_back();
@@ -726,8 +728,8 @@ void exec_do()
 	get_next_token();
 	if (current_tok_datatype != WHILE)
 		syntax_error(WHILE_EXPECTED);
-	eval_expression(&cond); /* проверка условия цикла */
-	if (cond)
+	eval_expression(&condition); /* проверка условия цикла */
+	if (condition)
 		source_code_location = temp; /* если условие истинно, то цикл выполняется, в противном случае происходит выход из цикла */
 }
 /**
@@ -753,13 +755,13 @@ void find_eob(void)
  */
 void exec_for(void)
 {
-	int cond;
+	int condition;
 	char *temp, *temp2;
 	int brace;
 
 	break_occurring = 0; /* флаг break */
 	get_next_token();
-	eval_expression(&cond); /* инициализирующее выражение */
+	eval_expression(&condition); /* инициализирующее выражение */
 	if (*current_token != ';')
 		syntax_error(SEMICOLON_EXPECTED);
 
@@ -767,7 +769,7 @@ void exec_for(void)
 	temp = source_code_location;
 	for (;;)
 	{
-		eval_expression(&cond); /* проверка условия */
+		eval_expression(&condition); /* проверка условия */
 		if (*current_token != ';')
 			syntax_error(SEMICOLON_EXPECTED);
 		source_code_location++; /* пропуск ; */
@@ -785,7 +787,7 @@ void exec_for(void)
 		}
 
 		/// если условие выполнено, то выполнить интерпретацию */
-		if (cond)
+		if (condition)
 		{
 			interpret_block();
 			if (ret_occurring > 0)
@@ -804,7 +806,7 @@ void exec_for(void)
 			return;
 		}
 		source_code_location = temp2;
-		eval_expression(&cond);		 /* выполнение инкремента */
+		eval_expression(&condition);		 /* выполнение инкремента */
 		source_code_location = temp; /* возврат в начало цикла */
 	}
 }

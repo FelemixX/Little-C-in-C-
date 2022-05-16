@@ -1,7 +1,7 @@
 /**
  * Анализатор рекурсивного спуска для целочисленных выражений, который может включать переменные и вызовы функций.
  */
-#include <setjmp.h>
+#include <setjmp.h> //либа для создания переходов а-ля ассемблер
 #include <ctype.h>
 #include <stdlib.h>
 #include <cstring>
@@ -75,6 +75,7 @@ extern char current_token[80];	   /* строковое представлени
 extern char token_type;			   /* содержит тип current_token */
 extern char current_tok_datatype;  /* внутреннее представление current_token */
 extern int ret_value;			   /* возвращаемое значение функции */
+
 /// Функции для анализатора
 void eval_expression(int *value);
 void eval_assignment_expression(int *value);
@@ -99,6 +100,7 @@ void syntax_error(int error) __attribute((noreturn));
 #else
 void syntax_error(int error);
 #endif
+
 /// Функции из интерпретатора
 void assign_var(char *var_name, int value);
 int find_var(char *s);
@@ -167,7 +169,7 @@ void eval_comparison_expression(int *value)
 {
 	int partial_value;
 	char op;
-	char relops[7] = {
+	char relational_operators[7] = {
 		LOWER,
 		LOWER_OR_EQUAL,
 		GREATER,
@@ -178,7 +180,7 @@ void eval_comparison_expression(int *value)
 
 	eval_sum_minus_expression(value);
 	op = *current_token;
-	if (strchr(relops, op))
+	if (strchr(relational_operators, op))
 	{
 		get_next_token();
 		eval_sum_minus_expression(&partial_value);
@@ -312,23 +314,23 @@ void atom(int *value)
 	case VARIABLE:
 		i = internal_func(current_token);
 		if (i != -1)
-		{ /* вызов стантартной функции */
+		{ /* вызов стандартной функции */
 			*value = (*intern_func[i].p)();
 		}
 		else if (find_function_in_function_table(current_token))
-		{ /* call user-defined function */
+		{ /* вызов пользовательской функции */
 			call_function();
 			*value = ret_value;
 		}
 		else
-			*value = find_var(current_token); /* get var's value */
+			*value = find_var(current_token); /* получаем значение переменной */
 		get_next_token();
 		return;
-	case NUMBER: /* is numeric constant */
+	case NUMBER: /* числовая константа */
 		*value = atoi(current_token);
 		get_next_token();
 		return;
-	case DELIMITER: /* see if character constant */
+	case DELIMITER: /* символьная константа */
 		if (*current_token == '\'')
 		{
 			*value = *source_code_location;
@@ -340,11 +342,11 @@ void atom(int *value)
 			return;
 		}
 		if (*current_token == ')')
-			return; /* process empty expression */
+			return; /* пустое выражение в скобках */
 		else
-			syntax_error(SYNTAX); /* syntax error */
+			syntax_error(SYNTAX); /* синтаксическая ошибка */
 	default:
-		syntax_error(SYNTAX); /* syntax error */
+		syntax_error(SYNTAX); /* синтаксическая ошибка */
 	}
 }
 /**
@@ -359,17 +361,18 @@ void syntax_error(int error_type)
 	int line_count = 0;
 	int i;
 
-	string errors_human_readable[]{
+	string errors_human_readable[]
+    {
 		"Синтаксическая ошибка",
 		"Слишком много или мало скобок",
 		"Нет выражения",
 		"Не хватает знаков равно",
 		"Не является переменной",
-		"Параметрическая ошибка",
+		"Неправильно задан параметр функции",
 		"Не хватает точки с запятой",
 		"Слишком много или мало операторных скобок",
 		"Функция не определена",
-		"Нужно указать тип данных",
+		"Тип данных не указан",
 		"Слишком много обращений к вложенным функциям",
 		"Функция возвращает значения без обращения к ней",
 		"Не хватает скобки",
@@ -377,7 +380,8 @@ void syntax_error(int error_type)
 		"Не хватает закрывающих кавычек",
 		"Не является строкой",
 		"Слишком много локальных переменных",
-		"На ноль делить НЕЛЬЗЯ"};
+		"На ноль делить НЕЛЬЗЯ"
+    };
 
 	cout << "\n"
 		 << errors_human_readable[error_type];
@@ -518,7 +522,7 @@ char get_next_token(void)
 		current_tok_datatype = FINISHED;
 		return (token_type = DELIMITER);
 	}
-	/// Знаки сравнение
+	/// Операции отношений
 	if (strchr("!<>=", *source_code_location))
 	{
 		switch (*source_code_location)
