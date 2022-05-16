@@ -1,6 +1,6 @@
 /**
  * Анализатор рекурсивного спуска для целочисленных выражений, который может включать переменные и вызовы функций.
-*/
+ */
 #include <setjmp.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -44,8 +44,8 @@ struct commands
 /// Структура списка функций стандартной библиотеки
 struct intern_func_type
 {
-	char *f_name;		/* имя функции */
-	int (*p)(void);		/* указатель на функцию */
+	char *f_name;	/* имя функции */
+	int (*p)(void); /* указатель на функцию */
 };
 
 extern variable_type global_vars[NUM_GLOBAL_VARS];
@@ -60,30 +60,30 @@ int getnum(void);
 
 /// Массив стандартных функций
 intern_func_type intern_func[] = {
-		{"getche", call_getche},
-		{"putch", call_putch},
-		{"puts", call_puts},
-		{"print", print},
-		{"getnum", getnum},
-		{"", 0}				/* этот список заканчивается нулем */
+	{"getche", call_getche},
+	{"putch", call_putch},
+	{"puts", call_puts},
+	{"print", print},
+	{"getnum", getnum},
+	{"", 0} /* этот список заканчивается нулем */
 };
 
-extern char *source_code_location;							/* текущее положение в исходном тексте программы */
-extern char *program_start_buffer;							/* указатель на начало буфера программы */
-extern jmp_buf execution_buffer;							/* содержит данные для longjmp() */
-extern char current_token[80];								/* строковое представление current_token */
-extern char token_type;										/* содержит тип current_token */
-extern char current_tok_datatype;							/* внутреннее представление current_token */
-extern int ret_value;										/* возвращаемое значение функции */
+extern char *source_code_location; /* текущее положение в исходном тексте программы */
+extern char *program_start_buffer; /* указатель на начало буфера программы */
+extern jmp_buf execution_buffer;   /* содержит данные для longjmp() */
+extern char current_token[80];	   /* строковое представление current_token */
+extern char token_type;			   /* содержит тип current_token */
+extern char current_tok_datatype;  /* внутреннее представление current_token */
+extern int ret_value;			   /* возвращаемое значение функции */
 /// Функции для анализатора
 void eval_expression(int *value);
 void eval_assignment_expression(int *value);
-void eval_exp1(int *value);									/* обработка операторов отношений */
-void eval_exp2(int *value);									/* обработка сложения или вычитания */
-void eval_exp3(int *value);     							/* обработка умножения, деления, целочисленного деления */
-void eval_exp4(int *value);     							/* унарные плюс и минус */
-void eval_exp5(int *value);     							/* обработка выражений в скобках */
-void atom(int *value);      								/* найти значение числа, переменной или функции */
+void eval_comparison_expression(int *value);		 /* обработка операторов отношений */
+void eval_sum_minus_expression(int *value);			 /* обработка сложения или вычитания */
+void eval_multiply_division_expression(int *value);	 /* обработка умножения, деления, целочисленного деления */
+void eval_unar_minus_expression(int *value);		 /* унарные плюс и минус */
+void eval_exp_in_parenthesis_expression(int *value); /* обработка выражений в скобках */
+void atom(int *value);								 /* найти значение числа, переменной или функции */
 char get_next_token(void);
 void shift_source_code_location_back(void);
 char look_up_token_in_table(char *s);
@@ -119,11 +119,11 @@ void eval_expression(int *value)
 	}
 	if (*current_token == ';')
 	{
-		*value = 0;						/* пустое выражение */
+		*value = 0; /* пустое выражение */
 		return;
 	}
 	eval_assignment_expression(value);
-	shift_source_code_location_back();	/* возврат последней лексемы во входной поток */
+	shift_source_code_location_back(); /* возврат последней лексемы во входной поток */
 }
 /**
  * @brief Обработка выражения в присваивании
@@ -131,7 +131,7 @@ void eval_expression(int *value)
  */
 void eval_assignment_expression(int *value)
 {
-	char temp[ID_LEN];									/* Содержит имя переменной, которой присваивается значение */
+	char temp[ID_LEN]; /* Содержит имя переменной, которой присваивается значение */
 	char temp_tok;
 
 	if (token_type == VARIABLE)
@@ -142,66 +142,66 @@ void eval_assignment_expression(int *value)
 			strcpy_s(temp, ID_LEN, current_token);
 			temp_tok = token_type;
 			get_next_token();
-			if (*current_token == '=')						/* Если присваивается */
+			if (*current_token == '=') /* Если присваивается */
 			{
 				get_next_token();
-				eval_assignment_expression(value);			/* то смотрим, что надо присвоить */
-				assign_var(temp, *value);	/* присваиваем */
+				eval_assignment_expression(value); /* то смотрим, что надо присвоить */
+				assign_var(temp, *value);		   /* присваиваем */
 				return;
 			}
 			else
-			{                                      			/* Если не присваивается */
-				shift_source_code_location_back(); 			/* То забываем про temp и копируем изначальное значение токена из temp_tok */
+			{									   /* Если не присваивается */
+				shift_source_code_location_back(); /* То забываем про temp и копируем изначальное значение токена из temp_tok */
 				strcpy_s(current_token, 80, temp);
 				token_type = temp_tok;
 			}
 		}
 	}
-	eval_exp1(value);
+	eval_comparison_expression(value);
 }
 /**
  * @brief Обработка операций сравнения.
  * @param value
  */
-void eval_exp1(int *value)
+void eval_comparison_expression(int *value)
 {
 	int partial_value;
 	char op;
 	char relops[7] = {
-			LOWER,
-			LOWER_OR_EQUAL,
-			GREATER,
-			GREATER_OR_EQUAL,
-			EQUAL,
-			NOT_EQUAL,
-			0};
+		LOWER,
+		LOWER_OR_EQUAL,
+		GREATER,
+		GREATER_OR_EQUAL,
+		EQUAL,
+		NOT_EQUAL,
+		0};
 
-	eval_exp2(value);
+	eval_sum_minus_expression(value);
 	op = *current_token;
 	if (strchr(relops, op))
 	{
 		get_next_token();
-		eval_exp2(&partial_value);
+		eval_sum_minus_expression(&partial_value);
 		switch (op)
 		{ /* perform the relational operation */
-			case LOWER:
-				*value = *value < partial_value;
-				break;
-			case LOWER_OR_EQUAL:
-				*value = *value <= partial_value;
-				break;
-			case GREATER:
-				*value = *value > partial_value;
-				break;
-			case GREATER_OR_EQUAL:
-				*value = *value >= partial_value;
-				break;
-			case EQUAL:
-				*value = *value == partial_value;
-				break;
-			case NOT_EQUAL:
-				*value = *value != partial_value;
-				break;
+		case LOWER:
+			*value = *value < partial_value;
+			break;
+		case LOWER_OR_EQUAL:
+			*value = *value <= partial_value;
+			break;
+		case GREATER:
+			*value = *value > partial_value;
+			break;
+		case GREATER_OR_EQUAL:
+			*value = *value >= partial_value;
+			break;
+		case EQUAL:
+			*value = *value == partial_value;
+			break;
+		case NOT_EQUAL:
+			*value = *value != partial_value;
+			break;
 		}
 	}
 }
@@ -210,24 +210,24 @@ void eval_exp1(int *value)
  * @brief Суммирование или вычисление двух термов
  * @param value
  */
-void eval_exp2(int *value)
+void eval_sum_minus_expression(int *value)
 {
 	char op;
 	int partial_value;
 
-	eval_exp3(value);
+	eval_multiply_division_expression(value);
 	while ((op = *current_token) == '+' || op == '-')
 	{
 		get_next_token();
-		eval_exp3(&partial_value);
+		eval_multiply_division_expression(&partial_value);
 		switch (op)
 		{ /* add or subtract */
-			case '-':
-				*value = *value - partial_value;
-				break;
-			case '+':
-				*value = *value + partial_value;
-				break;
+		case '-':
+			*value = *value - partial_value;
+			break;
+		case '+':
+			*value = *value + partial_value;
+			break;
 		}
 	}
 }
@@ -235,30 +235,30 @@ void eval_exp2(int *value)
  * @brief Умножение или деление двух множителей
  * @param value
  */
-void eval_exp3(int *value)
+void eval_multiply_division_expression(int *value)
 {
 	char op;
 	int partial_value, t;
 
-	eval_exp4(value);
+	eval_unar_minus_expression(value);
 	while ((op = *current_token) == '*' || op == '/' || op == '%')
 	{
 		get_next_token();
-		eval_exp4(&partial_value);
+		eval_unar_minus_expression(&partial_value);
 		switch (op)
 		{ /* mul, div, or modulus */
-			case '*':
-				*value = *value * partial_value;
-				break;
-			case '/':
-				if (partial_value == 0)
-					syntax_error(DIV_BY_ZERO);
-				*value = (*value) / partial_value;
-				break;
-			case '%':
-				t = (*value) / partial_value;
-				*value = *value - (t * partial_value);
-				break;
+		case '*':
+			*value = *value * partial_value;
+			break;
+		case '/':
+			if (partial_value == 0)
+				syntax_error(DIV_BY_ZERO);
+			*value = (*value) / partial_value;
+			break;
+		case '%':
+			t = (*value) / partial_value;
+			*value = *value - (t * partial_value);
+			break;
 		}
 	}
 }
@@ -266,7 +266,7 @@ void eval_exp3(int *value)
  * @brief Унарный + или -
  * @param value
  */
-void eval_exp4(int *value)
+void eval_unar_minus_expression(int *value)
 {
 	char op;
 
@@ -276,7 +276,7 @@ void eval_exp4(int *value)
 		op = *current_token;
 		get_next_token();
 	}
-	eval_exp5(value);
+	eval_exp_in_parenthesis_expression(value);
 	if (op)
 		if (op == '-')
 			*value = -(*value);
@@ -286,7 +286,7 @@ void eval_exp4(int *value)
  * @brief Обработка выражения в скобках
  * @param value
  */
-void eval_exp5(int *value)
+void eval_exp_in_parenthesis_expression(int *value)
 {
 	if (*current_token == '(')
 	{
@@ -309,42 +309,42 @@ void atom(int *value)
 
 	switch (token_type)
 	{
-		case VARIABLE:
-			i = internal_func(current_token);
-			if (i != -1)
-			{ /* call "standard library" function */
-				*value = (*intern_func[i].p)();
-			}
-			else if (find_function_in_function_table(current_token))
-			{ /* call user-defined function */
-				call_function();
-				*value = ret_value;
-			}
-			else
-				*value = find_var(current_token); /* get var's value */
+	case VARIABLE:
+		i = internal_func(current_token);
+		if (i != -1)
+		{ /* call "standard library" function */
+			*value = (*intern_func[i].p)();
+		}
+		else if (find_function_in_function_table(current_token))
+		{ /* call user-defined function */
+			call_function();
+			*value = ret_value;
+		}
+		else
+			*value = find_var(current_token); /* get var's value */
+		get_next_token();
+		return;
+	case NUMBER: /* is numeric constant */
+		*value = atoi(current_token);
+		get_next_token();
+		return;
+	case DELIMITER: /* see if character constant */
+		if (*current_token == '\'')
+		{
+			*value = *source_code_location;
+			source_code_location++;
+			if (*source_code_location != '\'')
+				syntax_error(QUOTE_EXPECTED);
+			source_code_location++;
 			get_next_token();
 			return;
-		case NUMBER: /* is numeric constant */
-			*value = atoi(current_token);
-			get_next_token();
-			return;
-		case DELIMITER: /* see if character constant */
-			if (*current_token == '\'')
-			{
-				*value = *source_code_location;
-				source_code_location++;
-				if (*source_code_location != '\'')
-					syntax_error(QUOTE_EXPECTED);
-				source_code_location++;
-				get_next_token();
-				return;
-			}
-			if (*current_token == ')')
-				return; /* process empty expression */
-			else
-				syntax_error(SYNTAX); /* syntax error */
-		default:
+		}
+		if (*current_token == ')')
+			return; /* process empty expression */
+		else
 			syntax_error(SYNTAX); /* syntax error */
+	default:
+		syntax_error(SYNTAX); /* syntax error */
 	}
 }
 /**
@@ -359,32 +359,30 @@ void syntax_error(int error_type)
 	int line_count = 0;
 	int i;
 
-	string errors_human_readable[]
-	{
-	"Синтаксическая ошибка",
-	"Слишком много или мало скобок",
-	"Нет выражения",
-	"Не хватает знаков равно",
-	"Не является переменной",
-	"Параметрическая ошибка",
-	"Не хватает точки с запятой",
-	"Слишком много или мало операторных скобок",
-	"Функция не определена",
-	"Нужно указать тип данных",
-	"Слишком много обращений к вложенным функциям",
-	"Функция возвращает значения без обращения к ней",
-	"Не хватает скобки",
-	"Нет оператора для цикла while",
-	"Не хватает закрывающих кавычек",
-	"Не является строкой",
-	"Слишком много локальных переменных",
-	"На ноль делить НЕЛЬЗЯ"
-	};
+	string errors_human_readable[]{
+		"Синтаксическая ошибка",
+		"Слишком много или мало скобок",
+		"Нет выражения",
+		"Не хватает знаков равно",
+		"Не является переменной",
+		"Параметрическая ошибка",
+		"Не хватает точки с запятой",
+		"Слишком много или мало операторных скобок",
+		"Функция не определена",
+		"Нужно указать тип данных",
+		"Слишком много обращений к вложенным функциям",
+		"Функция возвращает значения без обращения к ней",
+		"Не хватает скобки",
+		"Нет оператора для цикла while",
+		"Не хватает закрывающих кавычек",
+		"Не является строкой",
+		"Слишком много локальных переменных",
+		"На ноль делить НЕЛЬЗЯ"};
 
-	cout << "\n" << errors_human_readable[error_type];
+	cout << "\n"
+		 << errors_human_readable[error_type];
 
 	program_pointer_location = program_start_buffer;
-
 
 	/// Поиск позиции ошибки
 	while (program_pointer_location != source_code_location && *program_pointer_location != '\0')
@@ -484,7 +482,7 @@ char get_next_token(void)
 	}
 	/// Поиск комментариев
 	if (*source_code_location == '/')
-		if (*(source_code_location + 1) == '*')		/* найти конец комментария  */
+		if (*(source_code_location + 1) == '*') /* найти конец комментария  */
 		{
 			source_code_location += 2;
 			do
@@ -525,64 +523,64 @@ char get_next_token(void)
 	{
 		switch (*source_code_location)
 		{
-			case '=':
-				if (*(source_code_location + 1) == '=')
-				{
-					source_code_location++;
-					source_code_location++;
-					*temp_token = EQUAL;
-					temp_token++;
-					*temp_token = EQUAL;
-					temp_token++;
-					*temp_token = '\0';
-				}
-				break;
-			case '!':
-				if (*(source_code_location + 1) == '=')
-				{
-					source_code_location++;
-					source_code_location++;
-					*temp_token = NOT_EQUAL;
-					temp_token++;
-					*temp_token = NOT_EQUAL;
-					temp_token++;
-					*temp_token = '\0';
-				}
-				break;
-			case '<':
-				if (*(source_code_location + 1) == '=')
-				{
-					source_code_location++;
-					source_code_location++;
-					*temp_token = LOWER_OR_EQUAL;
-					temp_token++;
-					*temp_token = LOWER_OR_EQUAL;
-				}
-				else
-				{
-					source_code_location++;
-					*temp_token = LOWER;
-				}
+		case '=':
+			if (*(source_code_location + 1) == '=')
+			{
+				source_code_location++;
+				source_code_location++;
+				*temp_token = EQUAL;
+				temp_token++;
+				*temp_token = EQUAL;
 				temp_token++;
 				*temp_token = '\0';
-				break;
-			case '>':
-				if (*(source_code_location + 1) == '=')
-				{
-					source_code_location++;
-					source_code_location++;
-					*temp_token = GREATER_OR_EQUAL;
-					temp_token++;
-					*temp_token = GREATER_OR_EQUAL;
-				}
-				else
-				{
-					source_code_location++;
-					*temp_token = GREATER;
-				}
+			}
+			break;
+		case '!':
+			if (*(source_code_location + 1) == '=')
+			{
+				source_code_location++;
+				source_code_location++;
+				*temp_token = NOT_EQUAL;
+				temp_token++;
+				*temp_token = NOT_EQUAL;
 				temp_token++;
 				*temp_token = '\0';
-				break;
+			}
+			break;
+		case '<':
+			if (*(source_code_location + 1) == '=')
+			{
+				source_code_location++;
+				source_code_location++;
+				*temp_token = LOWER_OR_EQUAL;
+				temp_token++;
+				*temp_token = LOWER_OR_EQUAL;
+			}
+			else
+			{
+				source_code_location++;
+				*temp_token = LOWER;
+			}
+			temp_token++;
+			*temp_token = '\0';
+			break;
+		case '>':
+			if (*(source_code_location + 1) == '=')
+			{
+				source_code_location++;
+				source_code_location++;
+				*temp_token = GREATER_OR_EQUAL;
+				temp_token++;
+				*temp_token = GREATER_OR_EQUAL;
+			}
+			else
+			{
+				source_code_location++;
+				*temp_token = GREATER;
+			}
+			temp_token++;
+			*temp_token = '\0';
+			break;
 		}
 		if (*current_token)
 			return (token_type = DELIMITER);
@@ -591,7 +589,7 @@ char get_next_token(void)
 	if (strchr("+-*^/%=;(),'", *source_code_location))
 	{
 		*temp_token = *source_code_location;
-		source_code_location++;					/* продвижение на следующую позицию */
+		source_code_location++; /* продвижение на следующую позицию */
 		temp_token++;
 		*temp_token = '\0';
 		return (token_type = DELIMITER);
@@ -644,8 +642,8 @@ char get_next_token(void)
 	/// Эта строка является оператором или переменной?
 	if (token_type == TEMP)
 	{
-		current_tok_datatype = look_up_token_in_table(current_token);	/* преобразовать во внутренее представление */
-		if (current_tok_datatype)											/* это зарезервированное слово */
+		current_tok_datatype = look_up_token_in_table(current_token); /* преобразовать во внутренее представление */
+		if (current_tok_datatype)									  /* это зарезервированное слово */
 			token_type = KEYWORD;
 		else
 			token_type = VARIABLE;
