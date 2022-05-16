@@ -3,32 +3,32 @@
  */
 enum token_types
 {
-	DELIMITER,
-	VARIABLE,
-	NUMBER,
-	KEYWORD,
-	TEMP,
-	STRING,
-	BLOCK
+	DELIMITER,  //Разделители по типу +-=!? и т.д.
+	VARIABLE,   //Переменная
+	NUMBER, //Число
+	KEYWORD,    //Ключевое слов
+	TEMP,   //Буфер
+	STRING, //Строка
+	BLOCK   //Блокировка интепретатора. Обычно нужна когда встретилась ошибка или закончили читать функцию
 };
 /**
  * @brief Ключевые слова
  */
 enum tokens
 {
-	ARG,
-	CHAR,
-	INT,
-	IF,
-	ELSE,
-	FOR,
-	DO,
-	WHILE,
-	SWITCH,
-	RETURN,
-	CONTINUE,
-	BREAK,
-	EOL,
+	ARG,    //аргумент
+	CHAR,   //Вещественный тип данных
+	INT,    //Целочисленный тип данных
+	IF, //Оператор if
+	ELSE,   //Оператор else
+	FOR,    //Оператор for
+	DO, //Оператор do
+	WHILE,  //Оператор while
+	SWITCH, //Оператор switch
+	RETURN, //Оператор return
+	CONTINUE,   //Оператор continue
+	BREAK,  //Оператор break
+	EOL,    //Конец строки
 	FINISHED,
 	END
 };
@@ -37,11 +37,11 @@ enum tokens
  */
 enum double_ops
 {
-	LOWER = 1,
+	LOWER = 1,  //Меньше, меньше или равно
 	LOWER_OR_EQUAL,
-	GREATER,
+	GREATER,    //Больше, больше или равно
 	GREATER_OR_EQUAL,
-	EQUAL,
+	EQUAL,  //Эквивалентно или не эквивалентно
 	NOT_EQUAL
 };
 /**
@@ -49,22 +49,22 @@ enum double_ops
  */
 enum error_msg
 {
-	SYNTAX,
-	UNBAL_PARENS,
-	NO_EXP,
-	EQUALS_EXPECTED,
-	NOT_VAR,
-	PARAM_ERR,
-	SEMICOLON_EXPECTED,
-	UNBAL_BRACES,
-	FUNC_UNDEFINED,
-	TYPE_EXPECTED,
-	NESTED_FUNCTIONS,
-	RET_NOCALL,
-	PAREN_EXPECTED,
-	WHILE_EXPECTED,
-	QUOTE_EXPECTED,
-	NOT_TEMP,
-	TOO_MANY_LVARS,
-	DIV_BY_ZERO
+	SYNTAX, //синтаксическая ошибка
+	UNBAL_PARENS,   //Скобок слишком много или не хватает
+	NO_EXP, //Ожидалось выражение
+    EQUALS_EXPECTED, //Ожидалось приравнивание
+	NOT_VAR,    //не переменная
+	PARAM_ERR,  //неправильно задан параметр
+	SEMICOLON_EXPECTED, //ожидалась ;
+	UNBAL_BRACES,   //операторных скобок много или не хватает
+	FUNC_UNDEFINED, //функция определена неправильно
+	TYPE_EXPECTED,  //тип данных не указан
+	NESTED_FUNCTIONS,   //функция определена внутри другой функции
+	RET_NOCALL, //функция ничего не возвращает
+	PAREN_EXPECTED, //ожидалась скобка
+	WHILE_EXPECTED, //ожидался while
+	QUOTE_EXPECTED, //неправильно написан комментарий
+	NOT_TEMP,   //не строка
+	TOO_MANY_LVARS, //слишком много локальных переменных
+	DIV_BY_ZERO //на ноль делить нельзя
 };
