@@ -27,12 +27,24 @@ int main()
 
     print("Test is:"); //test
     print(test);
-
+    int testIf;
+    testIf = 20
     while(test <= 15)
     {
         print("\nTesting while\n");
         print(test);
         test = test + 1;
+    }
+    if (i <= 12)
+    {
+        if (i ==10)
+        {
+            break
+        }
+        testIf = testIf - 5;
+        print("\ntestIf equals\n");
+        print(testIf);
+        i--;
     }
 
 	return 0; /*test*/
