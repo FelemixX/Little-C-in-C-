@@ -66,6 +66,7 @@ int main()
         print(testIf);
         i = i - 1;
     }
-
+    int stupid;
+    stupid = 1 / 0;
 	return 0; /*test*/
 }
