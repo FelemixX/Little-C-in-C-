@@ -16,7 +16,7 @@ int testFunc(int num)
     return 0;
 }
 
-int DoWhile(int test)
+int doWhile(int test)
 {
     int test2;
     test = 3;
@@ -26,6 +26,25 @@ int DoWhile(int test)
         print("\nDoWhile is working now...\n");
         test2 = test;
     } while (test2);
+    return 0;
+}
+
+int catchMeBitch (int catch)
+{
+    print("\nCatch is:\n");
+    print(catch);
+    return 0;
+}
+
+int throwMeBitch(int i)
+{
+    int catch;
+    while (catch <=2)
+    {
+        i = i + 1;
+        catch = i;
+        catchMeBitch(catch);
+    }
     return 0;
 }
 
@@ -43,8 +62,8 @@ int main()
     puts("pepepopochechk\n");
 
     testFunc(l);
-    DoWhile(test);
-
+    doWhile(test);
+    throwMeBitch(i);
     print("Test is:"); // test
     print(test);
 
@@ -58,13 +77,12 @@ int main()
     {
         if (i == 10)
         {
+            break;
         }
         testIf = testIf - 5;
         print("\ntestIf equals\n");
         print(testIf);
         i = i - 1;
     }
-    int stupid;
-    stupid = 1 / 0;
     return 0; /*test*/
 }
