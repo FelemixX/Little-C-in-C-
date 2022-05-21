@@ -361,8 +361,7 @@ void syntax_error(int error_type)
 	int line_count = 0;
 	int i;
 
-	string errors_human_readable[]
-    {
+	string errors_human_readable[]{
 		"Синтаксическая ошибка",
 		"Слишком много или мало скобок",
 		"Нет выражения",
@@ -380,8 +379,7 @@ void syntax_error(int error_type)
 		"Не хватает закрывающих кавычек",
 		"Не является строкой",
 		"Слишком много локальных переменных",
-		"На ноль делить НЕЛЬЗЯ"
-    };
+		"На ноль делить НЕЛЬЗЯ"};
 
 	cout << "\n"
 		 << errors_human_readable[error_type];

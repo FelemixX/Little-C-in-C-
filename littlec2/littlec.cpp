@@ -75,7 +75,7 @@ char current_tok_datatype;			   /* внутреннее представлени
 int function_last_index_on_call_stack; /* индекс вершины стека вызова функции */
 int pos_in_funcition;				   /* индекс в таблице функций */
 int global_variable_position;		   /* индекс глобальной переменной в таблице global_vars */
-int local_var_to_stack;						   /* индекс в стеке локальных переменных */
+int local_var_to_stack;				   /* индекс в стеке локальных переменных */
 int ret_value;						   /* возвращаемое значение функции */
 int ret_occurring;					   /* возврат функции */
 int break_occurring;				   /* разрыв цикла */
@@ -91,7 +91,7 @@ char *find_function_in_function_table(char *name);
 void get_function_parameters();
 void get_function_arguments();
 void function_return();
-void local_push(struct variable_type i);
+void local_push(struct variable_type local_variable);
 int func_pop();
 void function_push_variables_on_call_stack(int i);
 void assign_var(char *var_name, int value);
@@ -114,10 +114,13 @@ int main(int argc, char *argv[])
 {
 	string file;
 	char *file_name;
+	// если мы запустили данную программу через консоль
+	// и передали в качестве параметра имя файла с программой
 	if (argc == 2)
 	{
 		strcpy(file_name, argv[1]);
 	}
+	// Также мы можем ввести название программы через консоль вручную
 	else
 	{
 		cout << "Файл: ";
@@ -193,7 +196,7 @@ void execute(char *fileName)
 void interpret_block()
 {
 	int value;
-	char block = 0;
+	char is_block_open = 0;
 
 	do
 	{
@@ -211,7 +214,7 @@ void interpret_block()
 		else if (token_type == BLOCK) /* Это ограничитель блока */
 		{
 			if (*current_token == '{') /* Блок */
-				block = 1;			   /* Интерпретация блока, а не оператора */
+				is_block_open = 1;	   /* Интерпретация блока, а не оператора */
 			else
 				return; /* Это }, выход */
 		}
@@ -266,7 +269,7 @@ void interpret_block()
 			case END: /* Конец uwu */
 				exit(0);
 			}
-	} while (current_tok_datatype != FINISHED && block);
+	} while (current_tok_datatype != FINISHED && is_block_open);
 }
 /**
  * Считать файл с кодом и внести в память
@@ -392,20 +395,20 @@ void declare_global_variables()
  */
 void declare_local_variables()
 {
-	struct variable_type i;
+	struct variable_type local_variable;
 
 	/// Получить типа
 	get_next_token();
 
-	i.variable_type = current_tok_datatype;
-	i.variable_value = 0; /* Инициализация нулем 0 */
+	local_variable.variable_type = current_tok_datatype;
+	local_variable.variable_value = 0; /* Инициализация нулем 0 */
 
 	/// Обработка списка переменных
 	do
 	{
 		get_next_token(); /* определение имени */
-		strcpy_s(i.variable_name, ID_LEN, current_token);
-		local_push(i);
+		strcpy_s(local_variable.variable_name, ID_LEN, current_token);
+		local_push(local_variable);
 		get_next_token();
 	} while (*current_token == ',');
 
@@ -425,17 +428,17 @@ void call_function()
 		syntax_error(FUNC_UNDEFINED); /* функция не определена */
 	else
 	{
-		local_var_temp = local_var_to_stack;								  /* запоминание индекса стека локальных переменных */
-		get_function_arguments();						  /* получение аргумента функции */
-		temp_source_code_location = source_code_location; /* запоминание адреса возврата */
-		function_push_variables_on_call_stack(local_var_temp);  /* запоминание индекса стека локальных переменных */
-		source_code_location = function_location;		  /* переустановка source_code_location в начало функции */
-		ret_occurring = 0;								  /* P возвращаемая возникающая переменная */
-		get_function_parameters();						  /* загрузка параметров функции значениями аргументов */
-		interpret_block();								  /* интерпретация функции */
-		ret_occurring = 0;								  /* обнуление возвращаемой переменной */
-		source_code_location = temp_source_code_location; /* восстановление initial_source_code_location */
-		local_var_to_stack = func_pop();							  /* сброс стека локальных переменных */
+		local_var_temp = local_var_to_stack;				   /* запоминание индекса стека локальных переменных */
+		get_function_arguments();							   /* получение аргумента функции */
+		temp_source_code_location = source_code_location;	   /* запоминание адреса возврата */
+		function_push_variables_on_call_stack(local_var_temp); /* запоминание индекса стека локальных переменных */
+		source_code_location = function_location;			   /* переустановка source_code_location в начало функции */
+		ret_occurring = 0;									   /* P возвращаемая возникающая переменная */
+		get_function_parameters();							   /* загрузка параметров функции значениями аргументов */
+		interpret_block();									   /* интерпретация функции */
+		ret_occurring = 0;									   /* обнуление возвращаемой переменной */
+		source_code_location = temp_source_code_location;	   /* восстановление initial_source_code_location */
+		local_var_to_stack = func_pop();					   /* сброс стека локальных переменных */
 	}
 }
 /**
@@ -473,8 +476,7 @@ void get_function_arguments()
 		temp[count] = value; /* временное запоминание */
 		get_next_token();
 		count++;
-	}
-    while (*current_token == ',');
+	} while (*current_token == ',');
 	count--;
 
 	/// Затолкнуть в local_var_stack в обратном порядке
@@ -515,8 +517,7 @@ void get_function_parameters()
 		}
 		else
 			break;
-	}
-    while (*current_token == ',');
+	} while (*current_token == ',');
 	if (*current_token != ')')
 		syntax_error(PAREN_EXPECTED);
 }
@@ -532,9 +533,9 @@ void function_return()
 }
 /**
  * @brief Затолкнуть локальную переменную в local_var_stack
- * @param i
+ * @param local_variable
  */
-void local_push(struct variable_type i)
+void local_push(struct variable_type local_variable)
 {
 	if (local_var_to_stack >= NUM_LOCAL_VARS)
 	{
@@ -542,7 +543,7 @@ void local_push(struct variable_type i)
 	}
 	else
 	{
-		local_var_stack[local_var_to_stack] = i;
+		local_var_stack[local_var_to_stack] = local_variable;
 		local_var_to_stack++;
 	}
 }
@@ -656,9 +657,9 @@ int is_variable(char *s)
  */
 void execute_if_statement()
 {
-	int conditionition;
-	eval_expression(&conditionition); /* вычисление if-выражения */
-	if (conditionition)				 /* истина - интерпретация if-предложения */
+	int condition;
+	eval_expression(&condition); /* вычисление if-выражения */
+	if (condition)				 /* истина - интерпретация if-предложения */
 	{
 		interpret_block();
 	}
@@ -686,7 +687,7 @@ void exec_while()
 	temp = source_code_location; /* запоминание адреса начала цикла while */
 	get_next_token();
 	eval_expression(&condition); /* вычисление управляющего выражения */
-	if (condition)				/* если оно истинно, то выполнить интерпретацию */
+	if (condition)				 /* если оно истинно, то выполнить интерпретацию */
 	{
 		interpret_block();
 		if (break_occurring > 0)
@@ -806,7 +807,7 @@ void exec_for(void)
 			return;
 		}
 		source_code_location = temp2;
-		eval_expression(&condition);		 /* выполнение инкремента */
+		eval_expression(&condition); /* выполнение инкремента */
 		source_code_location = temp; /* возврат в начало цикла */
 	}
 }
