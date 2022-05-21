@@ -185,7 +185,7 @@ void eval_comparison_expression(int *value)
 		get_next_token();
 		eval_sum_minus_expression(&partial_value);
 		switch (op)
-		{ /* perform the relational operation */
+		{ /* выполнения операторов отношений */
 		case LOWER:
 			*value = *value < partial_value;
 			break;
@@ -248,7 +248,7 @@ void eval_multiply_division_expression(int *value)
 		get_next_token();
 		eval_unar_minus_expression(&partial_value);
 		switch (op)
-		{ /* mul, div, or modulus */
+		{ /* умножение, деление, или mod */
 		case '*':
 			*value = *value * partial_value;
 			break;
@@ -293,7 +293,7 @@ void eval_exp_in_parenthesis_expression(int *value)
 	if (*current_token == '(')
 	{
 		get_next_token();
-		eval_assignment_expression(value); /* get subexpression */
+		eval_assignment_expression(value); /* получить подстроку */
 		if (*current_token != ')')
 			syntax_error(PAREN_EXPECTED);
 		get_next_token();
@@ -443,25 +443,25 @@ char get_next_token(void)
 	while (is_whitespace(*source_code_location) && *source_code_location)
 		++source_code_location;
 
-	/* Handle Windows and Mac newlines */
+	/* Обработка символа переноса на новую строку для Mac и Windows */
 	if (*source_code_location == '\r')
 	{
 		++source_code_location;
-		/* Only skip \n if it exists (if it doesn't, we are running on mac) */
+		/* Пропускает только \n если мы на Windows, а не на Mac */
 		if (*source_code_location == '\n')
 		{
 			++source_code_location;
 		}
-		/* skip over white space */
+		/* Пропуск пробела в коде */
 		while (is_whitespace(*source_code_location) && *source_code_location)
 			++source_code_location;
 	}
 
-	/* Handle Unix newlines */
+	/* Обработка новых строк для Unix подобных систем */
 	if (*source_code_location == '\n')
 	{
 		++source_code_location;
-		/* skip over white space */
+		/* Пропустить пробел */
 		while (is_whitespace(*source_code_location) && *source_code_location)
 			++source_code_location;
 	}
@@ -503,9 +503,9 @@ char get_next_token(void)
 	/// Поиск комментариев C++ стиля
 	if (*source_code_location == '/')
 		if (*(source_code_location + 1) == '/')
-		{ /* is a comment */
+		{ /* Это комментарий */
 			source_code_location += 2;
-			/* find end of line */
+			/* Поиск конца файла */
 			while (*source_code_location != '\r' && *source_code_location != '\n' && *source_code_location != '\0')
 				source_code_location++;
 			if (*source_code_location == '\r' && *(source_code_location + 1) == '\n')
@@ -515,7 +515,7 @@ char get_next_token(void)
 		}
 	/// Поиск конец файла после комментария
 	if (*source_code_location == '\0')
-	{ /* end of file */
+	{ /* Поиск конца файла */
 		*current_token = '\0';
 		current_tok_datatype = FINISHED;
 		return (token_type = DELIMITER);

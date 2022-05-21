@@ -3,9 +3,8 @@
  */
 
 #if defined(_MSC_VER)
-#include <conio.h> /* if your compiler does not
-					   support this  header file,
-					   remove it */
+#include <conio.h> /* Если комплиятор ругается на это,
+ *                  То можно убрать */
 #endif
 
 #include <stdio.h>
